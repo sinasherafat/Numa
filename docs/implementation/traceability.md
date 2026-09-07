@@ -17,7 +17,7 @@ Status vocabulary: **implemented** means code or UI exists; **verified** means a
 
 | ID | Route or component | Status |
 | --- | --- | --- |
-| B01 | Player pause, Ask/Explain this, return to same audio position | Implemented and locally browser-verified; Preview rerun required after deployment |
+| B01 | Player pause, Ask/Explain this, return to same audio position | Implemented and browser-verified locally and on the hosted Preview |
 | B02 | English-only offered now; strings and `lang` are isolated for later i18n | Implemented |
 | B03 | Two synthetic host roles in transcript and generated demo audio | Implemented; fixture audio is downloadable |
 | B04 | Evidence chips and `/sources/study-a/page/4` source reader | Implemented |
@@ -69,7 +69,7 @@ All data-bearing routes render Ready fixture content. Loading, empty, error and 
 - E04 concurrent adaptation: deterministic unit test rejects stale cursor version.
 - E05 completion is not mastery: player completion never creates explain-back evidence.
 - E06 memory off: unit test returns no cross-session personalization evidence.
-- E08 corrected transcript: e2e assessment flow submits the edited text state.
+- E08 corrected transcript: local and hosted browser assessment flows submit the edited text state.
 - E09/E10 insufficient evidence and non-comparable conditions: API vocabulary and comparison fixture use explicit states; live model gate blocked.
 - E11/E12 duplicate and baseline change: UI baseline only moves on explicit action; live content hashing blocked.
 - E14/E15 provider failure and deletion during jobs: service ports require durable job ownership and cancellation; live worker blocked.
