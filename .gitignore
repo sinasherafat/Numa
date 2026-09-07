@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+.next/
+*.tsbuildinfo
+.vercel/
+.env
+.env.local
+.env.*.local
+coverage/
+playwright-report/
+test-results/
+*.log
+.DS_Store
+artifacts/screenshots/*-before.png
+.vercel
+.env*
