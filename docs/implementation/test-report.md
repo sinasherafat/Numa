@@ -8,7 +8,7 @@ This report is updated from executed commands; unavailable checks are never reco
 
 The signed-in Vercel dashboard lists `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `NUMA_AI_PROVIDER` in Preview scope. The values are masked; this task cannot verify that `NUMA_AI_PROVIDER` is exactly `cloudflare-workers-ai`, nor can it read/use the Cloudflare token through the available Vercel connector. These variables are absent from this machine's `.env.local`. The existing saved Numa/Supabase login was rejected, so private workspace routes are not available for live verification. No live Cloudflare request or private-source workflow was attempted or passed.
 
-The current local `HEAD`, cached remote feature ref, and GitHub PR #1 head are `b851380543150a3f52f63a59f52a6aa9bee57dd8`. Existing automated results below are valid for unchanged application code. The latest Vercel dashboard observation from the prior checkpoint showed Preview **Ready** for this SHA; the Vercel API connector currently returns 404 for that recorded deployment ID, so no newer API-side status is claimed.
+Application checks and final hosted screenshots were performed on code commit `e5333086152e2a63c4537f519089ab8755d7ddfb`. The signed-in Vercel dashboard showed deployment `eiUEbgPv7Bj9coXxZts94uVDeSFU` **Ready**, target **Preview**, with that source SHA. The canonical branch Preview is `https://numa-git-codex-numa-v1-sinas-projects-111632f8.vercel.app`; its unique deployment URL is `https://numa-gw4zvvzsi-sinas-projects-111632f8.vercel.app`. This report update is docs-only; the resulting PR-head Preview must be matched by its deployment check before handoff.
 
 ### Current local application checks
 
@@ -20,8 +20,9 @@ These commands ran against the current working tree after the Cloudflare adapter
 | ESLint | Passed | `./node_modules/.bin/eslint .` |
 | Unit tests | Passed | Vitest: 3 files, 19 tests. Six `provider.test.ts` tests mock HTTP and do not prove provider availability. |
 | Next.js production build | Passed with warning | `./node_modules/.bin/next build --webpack`; all 11 Workflow steps built. Existing `unpdf` `import.meta` critical-dependency warning remains. |
+| Preview PDF limit copy | Passed | Hosted `/new` and private upload copy now state the actual enforced 4 MiB cap; the prior inaccurate 20 MB demo label was corrected. |
 | Real provider smoke | Not run | Preview variable names exist, but their values cannot be inspected here and no authenticated live application session is available. No AI success is claimed. |
-| Hosted Preview | Sample route render checked; private route blocked | Preview URL: `https://numa-git-codex-numa-v1-sinas-projects-111632f8.vercel.app`. `/new`, `/listen`, `/compare`, `/topics/spaced-practice/changes`, and `/explain/feedback` render explicitly labeled sample data. `/workspace` redirects to `/login`; the available saved sign-in was rejected. These screenshots are visual-reference checks only, not live feature verification. |
+| Hosted Preview | Five sample routes checked; private route blocked | The application-code deployment for SHA `e5333086152e2a63c4537f519089ab8755d7ddfb` was **Ready**. `/new`, `/listen`, `/compare`, `/topics/spaced-practice/changes`, and `/explain/feedback` render explicitly labeled sample data. `/new` at 390×844 has no horizontal overflow; browser console warnings/errors are empty. `/workspace` redirects to `/login`; the available saved sign-in was rejected. Screenshots are visual-reference checks only, not live feature verification. |
 
 | Check | Result | Evidence |
 | --- | --- | --- |
@@ -53,9 +54,9 @@ The 2026-09-30 local rerun used the current source in the in-app Chromium browse
 - J05: baseline moved only after explicit review and could be kept at the prior review.
 - Source grounding: a citation opened physical PDF page 4 and the return path preserved the listening route.
 
-Historical hosted-browser evidence for J01–J06 applies only to the checkpoint/deployment documented when it ran. The current hosted session verified sample route rendering, but not authenticated live workspace journeys.
+Historical hosted-browser evidence for J01–J06 applies only to the checkpoint/deployment documented when it ran. On application SHA `e5333086152e2a63c4537f519089ab8755d7ddfb`, the hosted session verified sample route rendering and the private login boundary, but not authenticated live workspace journeys.
 
-Previous checkpoint HTTP smoke evidence remains historical; it does not establish current provider availability or authenticated access. In this turn, browser inspection confirmed the Preview sample pages and the private route's login boundary. Deployment Protection was not disabled or bypassed.
+Previous checkpoint HTTP smoke evidence remains historical; it does not establish current provider availability or authenticated access. The application-code Preview deployment's dashboard record matched the feature branch and commit SHA; hosted browser inspection confirmed the five sample pages and private route's login boundary. Deployment Protection was not disabled or bypassed.
 
 ## Deployment safety
 
