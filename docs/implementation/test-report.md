@@ -6,7 +6,7 @@ This report is updated from executed commands; unavailable checks are never reco
 
 ### Current state after Cloudflare Preview configuration (2026-10-01)
 
-The signed-in Vercel dashboard lists `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `NUMA_AI_PROVIDER` in Preview scope. The values are masked; this task cannot verify that `NUMA_AI_PROVIDER` is exactly `cloudflare-workers-ai`, nor can it read/use the Cloudflare token through the available Vercel connector. These variables are absent from this machine's `.env.local`. The existing saved Numa/Supabase login was rejected, so private workspace routes are not available for live verification. No live Cloudflare request or private-source workflow was attempted or passed.
+The signed-in Vercel dashboard lists `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `NUMA_AI_PROVIDER` in Preview scope; values are masked and were not read. A real authenticated PDF upload reached the private upload callback and Blob verification, but its job-create RPC failed with PostgreSQL `42501 Invalid workflow credential`. The database contains a SHA-256 workflow verifier row, but its digest does not match the current Preview `NUMA_WORKFLOW_SECRET`. No job, Cloudflare operation, or PDF→podcast result was produced. This is a credential synchronization failure, not evidence of a Cloudflare provider failure.
 
 Application checks and final hosted screenshots were performed on code commit `e5333086152e2a63c4537f519089ab8755d7ddfb`. The signed-in Vercel dashboard showed deployment `eiUEbgPv7Bj9coXxZts94uVDeSFU` **Ready**, target **Preview**, with that source SHA. The canonical branch Preview is `https://numa-git-codex-numa-v1-sinas-projects-111632f8.vercel.app`; its unique deployment URL is `https://numa-gw4zvvzsi-sinas-projects-111632f8.vercel.app`. This report update is docs-only; the resulting PR-head Preview must be matched by its deployment check before handoff.
 
@@ -16,12 +16,13 @@ These commands ran against the current working tree after the Cloudflare adapter
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| TypeScript strict typecheck | Passed | `./node_modules/.bin/tsc --noEmit` after production build regenerated Next types |
-| ESLint | Passed | `./node_modules/.bin/eslint .` |
-| Unit tests | Passed | Vitest: 3 files, 19 tests. Six `provider.test.ts` tests mock HTTP and do not prove provider availability. |
+| TypeScript strict typecheck | Passed | `./node_modules/.bin/tsc --noEmit` on the current uncommitted worktree |
+| ESLint | Passed | `./node_modules/.bin/eslint .` on the current uncommitted worktree |
+| Unit tests | Passed | Vitest: 4 files, 23 tests. Provider contract tests mock HTTP and do not prove provider availability. |
 | Next.js production build | Passed with warning | `./node_modules/.bin/next build --webpack`; all 11 Workflow steps built. Existing `unpdf` `import.meta` critical-dependency warning remains. |
+| Diff whitespace check | Passed | `git diff --check` |
 | Preview PDF limit copy | Passed | Hosted `/new` and private upload copy now state the actual enforced 4 MiB cap; the prior inaccurate 20 MB demo label was corrected. |
-| Real provider smoke | Not run | Preview variable names exist, but their values cannot be inspected here and no authenticated live application session is available. No AI success is claimed. |
+| Real provider smoke | Blocked before provider | Upload did not create a source job; Workflow secret validation failed in Supabase. No AI success is claimed. |
 | Hosted Preview | Five sample routes checked; private route blocked | The application-code deployment for SHA `e5333086152e2a63c4537f519089ab8755d7ddfb` was **Ready**. `/new`, `/listen`, `/compare`, `/topics/spaced-practice/changes`, and `/explain/feedback` render explicitly labeled sample data. `/new` at 390×844 has no horizontal overflow; browser console warnings/errors are empty. `/workspace` redirects to `/login`; the available saved sign-in was rejected. Screenshots are visual-reference checks only, not live feature verification. |
 
 | Check | Result | Evidence |
@@ -64,4 +65,4 @@ The first Git-triggered deployment of this newly created project was incorrectly
 
 ## Live provider boundary
 
-The current live AI adapter calls Cloudflare Workers AI directly: gpt-oss-20b for JSON generation, Whisper for STT, and MeloTTS for MP3 synthesis. It uses server-only credentials, strict schemas, bounded inputs/outputs, no provider retries, and never substitutes sample data. Adapter tests are mocked contract tests only. Vercel Preview variable names are present, but no real provider request or PDF→podcast Workflow run has been verified. F01, F04, and F05 also lack live provider-backed routes. Authenticated browser checks require a valid Numa account session; the available saved sign-in was rejected.
+The current live AI adapter calls Cloudflare Workers AI directly: gpt-oss-20b for JSON generation, Whisper for STT, and MeloTTS for MP3 synthesis. It uses server-only credentials, strict schemas, bounded inputs/outputs, no provider retries, and never substitutes sample data. Adapter tests are mocked contract tests only. F04/F05 routes are now implemented and unit-tested for structured citation validation, but no real provider request or authenticated hosted call has been verified. F01 still lacks a live adaptation route. The end-to-end PDF→podcast workflow is blocked because Preview `NUMA_WORKFLOW_SECRET` and the database verifier digest differ; one authenticated PDF callback failed at `workflow_create_source_job` with PostgreSQL `42501 Invalid workflow credential` before creating a job.

@@ -337,6 +337,11 @@ blockquote { margin: 5px 0 12px; font-size: 16px; line-height: 1.5; }
 .source-live { padding: 15px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--border); border-radius: 12px; }
 .source-live > svg { color: var(--accent); }
 .feature-live-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+.live-analysis-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; margin-top: 18px; }
+.live-analysis-grid .card { display: grid; align-content: start; gap: 10px; }
+.live-analysis-grid label { display: grid; gap: 6px; }
+.live-analysis-grid select[multiple] { min-height: 112px; }
+.live-analysis-result { margin: 0; max-height: 420px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 18px; border: 1px solid var(--line, #e5e3ed); border-radius: 14px; background: #faf9fd; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .live-feature { min-height: 196px; display: flex; flex-direction: column; gap: 10px; }
 .live-feature h3 { margin: 4px 0 -3px; font-size: 19px; }
 .live-feature p { margin: 0 0 auto; line-height: 1.45; }
@@ -353,6 +358,7 @@ blockquote { margin: 5px 0 12px; font-size: 16px; line-height: 1.5; }
 
 @media (max-width: 900px) {
   .live-grid, .feature-live-grid { grid-template-columns: 1fr 1fr; }
+  .live-analysis-grid { grid-template-columns: 1fr; }
   .live-upload-card { grid-column: 1 / -1; }
   .live-hero { align-items: stretch; flex-direction: column; }
   .live-health { width: 100%; }
@@ -376,7 +382,7 @@ blockquote { margin: 5px 0 12px; font-size: 16px; line-height: 1.5; }
   .live-topbar { height: auto; min-height: 64px; padding: 10px 16px; gap: 10px; }
   .live-topbar .badge { display: none; }
   .live-wrap { width: min(100% - 24px, 1180px); padding-top: 32px; }
-  .live-grid, .feature-live-grid, .source-live-grid { grid-template-columns: 1fr; }
+  .live-grid, .feature-live-grid, .source-live-grid, .live-analysis-grid { grid-template-columns: 1fr; }
   .goal-row { grid-template-columns: 1fr; }
   .live-fields { grid-template-columns: 1fr; }
   .live-footer { flex-direction: column; }

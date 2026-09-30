@@ -8,21 +8,23 @@ import { Brain, CheckCircle2, CircleAlert, Database, FileText, GitCompareArrows,
 
 type LiveState = {
   user: { id: string; email: string | null };
-  sources: Array<{ id: string; title: string; created_at: string; source_versions: Array<{ id: string; status: string; added_at: string; extracted_word_count: number | null }> }>;
+  sources: Array<{ id: string; title: string; created_at: string; source_versions: Array<{ id: string; status: string; added_at: string; extracted_word_count: number | null; content_hash: string }> }>;
   jobs: Array<{ id: string; state: string; checkpoint: string | null; error_code: string | null; workflow_run_id: string | null; created_at: string; result?: { session_id?: string } }>;
   sessions: Array<{ id: string; goal_type: string; level: string; duration_target: number; state: string; topics: { title?: string; question?: string } | null }>;
   chapters: Array<{ id: string; objective: string; duration_ms: number; status: string; created_at: string }>;
   consents: Array<{ type: string; enabled: boolean }>;
   evidence: Array<{ id: string; type: string; evidence_text: string | null; concepts: { label?: string } | null }>;
   outcomes: Array<{ id: string; type: string; content: unknown; status: string }>;
+  reviewCheckpoints: Array<{ id: string; topic_id: string; snapshot_id: string; marked_reviewed_at: string; source_snapshots: { version_ids?: string[] } | null }>;
+  changeSets: Array<{ id: string; topic_id: string; baseline_id: string; new_snapshot_id: string; items: unknown; state: string; created_at: string }>;
 };
 
 const features = [
   { id: "F01", icon: Headphones, title: "Adaptive listening", detail: "The sample workspace demonstrates future-only adaptation. Live revision acceptance still needs implementation." },
   { id: "F02", icon: Brain, title: "My Understanding", detail: "Live consent and owner-scoped evidence are saved. Explain-back memory is recorded only with consent." },
   { id: "F03", icon: Mic2, title: "Explain it back", detail: "Confirmed text is saved privately; free-provider speech transcription and grounded assessment need Preview credentials." },
-  { id: "F04", icon: GitCompareArrows, title: "Compare sources", detail: "The sample route is illustrative; live multi-source comparison is not yet implemented." },
-  { id: "F05", icon: History, title: "What changed", detail: "The sample route is illustrative; live change analysis and baseline action are not yet implemented." },
+  { id: "F04", icon: GitCompareArrows, title: "Compare sources", detail: "Compare two to five ready private sources. Every returned claim must cite extracted PDF-page evidence." },
+  { id: "F05", icon: History, title: "What changed", detail: "Save an explicit review baseline, then compare later sources. The baseline never moves automatically." },
   { id: "F06", icon: Target, title: "Learn for a goal", detail: "Live source ingestion creates goal-shaped learning outputs, bounded to 5 minutes in Preview." },
 ];
 
@@ -48,6 +50,12 @@ export function LiveWorkspace() {
   const [level, setLevel] = useState<"beginner" | "familiar" | "advanced">("familiar");
   const duration = 5 as const;
   const [teachback, setTeachback] = useState("");
+  const [comparisonQuestion, setComparisonQuestion] = useState("What do these sources agree on, and where do their conditions differ?");
+  const [comparisonIds, setComparisonIds] = useState<string[]>([]);
+  const [baselineIds, setBaselineIds] = useState<string[]>([]);
+  const [updateIds, setUpdateIds] = useState<string[]>([]);
+  const [analysisMessage, setAnalysisMessage] = useState("");
+  const [analysisResult, setAnalysisResult] = useState("");
   const [recording, setRecording] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -75,6 +83,48 @@ export function LiveWorkspace() {
   const rawAudioEnabled = state?.consents.find((item) => item.type === "raw_audio_retention")?.enabled ?? false;
   const newestSession = state?.sessions[0];
   const activeJobs = state?.jobs.filter((job) => ["queued", "running", "retry_wait"].includes(job.state)).length ?? 0;
+  const readyVersions = state?.sources.flatMap((source) => source.source_versions.filter((version) => version.status === "ready").map((version) => ({ ...version, sourceId: source.id, title: source.title }))) ?? [];
+
+  async function runComparison() {
+    if (!newestSession || comparisonIds.length < 2) return;
+    setBusy(true); setAnalysisMessage(""); setAnalysisResult("");
+    try {
+      const response = await fetch("/api/live/comparisons", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() }, body: JSON.stringify({ sessionId: newestSession.id, sourceVersionIds: comparisonIds, question: comparisonQuestion }) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message ?? "Live comparison failed.");
+      setAnalysisMessage("Live comparison saved. Provider: " + payload.data.provider + ". " + (payload.data.agreements?.length ?? 0) + " agreements, " + (payload.data.differences?.length ?? 0) + " differences, " + (payload.data.conditions?.length ?? 0) + " conditions, " + (payload.data.unknowns?.length ?? 0) + " unknowns.");
+      setAnalysisResult(JSON.stringify({ agreements: payload.data.agreements, differences: payload.data.differences, conditions: payload.data.conditions, unknowns: payload.data.unknowns }, null, 2));
+      await refresh();
+    } catch (reason) { setAnalysisMessage(reason instanceof Error ? reason.message : "Live comparison failed."); }
+    finally { setBusy(false); }
+  }
+
+  async function saveBaseline() {
+    if (!newestSession || !baselineIds.length) return;
+    setBusy(true); setAnalysisMessage(""); setAnalysisResult("");
+    try {
+      const response = await fetch("/api/live/changes/baseline", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() }, body: JSON.stringify({ sessionId: newestSession.id, sourceVersionIds: baselineIds }) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message ?? "Baseline could not be saved.");
+      setAnalysisMessage("Explicit baseline saved at " + new Date(payload.data.marked_reviewed_at).toLocaleString() + ". It will not change unless you mark another baseline.");
+      await refresh();
+    } catch (reason) { setAnalysisMessage(reason instanceof Error ? reason.message : "Baseline could not be saved."); }
+    finally { setBusy(false); }
+  }
+
+  async function analyzeChanges() {
+    if (!newestSession || !updateIds.length) return;
+    setBusy(true); setAnalysisMessage(""); setAnalysisResult("");
+    try {
+      const response = await fetch("/api/live/changes", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() }, body: JSON.stringify({ sessionId: newestSession.id, newSourceVersionIds: updateIds }) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message ?? "Live change analysis failed.");
+      setAnalysisMessage("Live change set saved. " + (payload.data.added?.length ?? 0) + " added, " + (payload.data.removed?.length ?? 0) + " removed, " + (payload.data.modified?.length ?? 0) + " modified, " + (payload.data.uncertain?.length ?? 0) + " uncertain. Baseline unchanged.");
+      setAnalysisResult(JSON.stringify({ added: payload.data.added, removed: payload.data.removed, modified: payload.data.modified, uncertain: payload.data.uncertain }, null, 2));
+      await refresh();
+    } catch (reason) { setAnalysisMessage(reason instanceof Error ? reason.message : "Live change analysis failed."); }
+    finally { setBusy(false); }
+  }
 
   function downloadOutcomes() {
     if (!state?.outcomes.length) return;
@@ -219,6 +269,12 @@ export function LiveWorkspace() {
         {!!state?.chapters.length && <section className="card"><div className="row between"><div><span className="eyebrow">Authenticated stream</span><h2>Your generated audio</h2></div><span className="badge green">Private</span></div><div className="live-list">{state.chapters.map((chapter) => <div className="live-audio" key={chapter.id}><div><strong>{chapter.objective}</strong><span>{Math.ceil(chapter.duration_ms / 60000)} min · no permanent public URL</span></div><audio controls preload="metadata" src={`/api/live/audio/${chapter.id}`}/></div>)}</div></section>}
         {!!state?.outcomes.length && <section className="card"><div className="row between"><div><span className="eyebrow">Goal-shaped artifacts</span><h2>Your generated outcomes</h2></div><button className="button compact" onClick={downloadOutcomes}>Download Markdown</button></div><div className="source-live-grid">{state.outcomes.filter((item) => item.type !== "audio").map((outcome) => <article className="source-live" key={outcome.id}><Target/><div><strong>{outcome.type.replaceAll("_", " ")}</strong><span>{outcome.status} · generated from your private snapshot</span></div></article>)}</div></section>}
         <section className="feature-live-grid">{features.map(({ id, icon: Icon, title, detail }) => <article className="card live-feature" key={id}><div className="row between"><Icon/><span className="badge purple">{id}</span></div><h3>{title}</h3><p className="muted">{detail}</p>{id === "F02" && <div className="row"><button className={`switch ${memoryEnabled ? "on" : ""}`} role="switch" aria-checked={memoryEnabled} aria-label="Private learning memory" onClick={() => setConsent(!memoryEnabled)} disabled={busy}/><strong>{memoryEnabled ? "On by consent" : "Off"}</strong></div>}{id === "F03" && <div className="live-teachback"><div className="row wrap"><button className={`button compact ${recording ? "danger" : ""}`} disabled={!newestSession || busy} onClick={toggleRecording}>{recording ? "Stop recording" : "Record explanation"}</button><div className="row"><button className={`switch ${rawAudioEnabled ? "on" : ""}`} role="switch" aria-checked={rawAudioEnabled} aria-label="Retain raw voice recordings" onClick={() => setConsent(!rawAudioEnabled)} disabled={busy}/><span className="fine">Keep raw audio</span></div></div><textarea className="input" rows={3} placeholder={newestSession ? "Record or explain the key idea in your own words…" : "Available after a private session is ready"} value={teachback} onChange={(event) => setTeachback(event.target.value)} disabled={!newestSession}/><button className="button compact" disabled={!newestSession || teachback.trim().length < 20 || busy} onClick={saveTeachback}>Save confirmed text</button></div>}</article>)}</section>
+        <section className="live-analysis-grid">
+          <article className="card"><span className="eyebrow">F04 · live provider path</span><h2>Compare private sources</h2><p className="fine">Select at least two ready versions. Claims are stored with chunk IDs and physical PDF pages.</p><label>Question<input className="input" value={comparisonQuestion} onChange={(event) => setComparisonQuestion(event.target.value)} maxLength={500}/></label><label>Source versions<select className="select" multiple size={Math.min(6, Math.max(2, readyVersions.length))} value={comparisonIds} onChange={(event) => setComparisonIds(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>{readyVersions.map((version) => <option key={version.id} value={version.id}>{version.title} · {version.extracted_word_count ?? 0} words</option>)}</select></label><button className="button primary" disabled={!newestSession || comparisonIds.length < 2 || busy} onClick={runComparison}>Generate grounded comparison</button></article>
+          <article className="card"><span className="eyebrow">F05 · explicit baseline</span><h2>Review what changed</h2><p className="fine">Current baseline: {state?.reviewCheckpoints[0] ? new Date(state.reviewCheckpoints[0].marked_reviewed_at).toLocaleString() : "none saved"}. New baseline changes only when you explicitly save one.</p><label>Mark these source versions as the baseline<select className="select" multiple size={Math.min(6, Math.max(1, readyVersions.length))} value={baselineIds} onChange={(event) => setBaselineIds(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>{readyVersions.map((version) => <option key={version.id} value={version.id}>{version.title} · {version.content_hash.slice(0, 10)}</option>)}</select></label><button className="button compact" disabled={!newestSession || !baselineIds.length || busy} onClick={saveBaseline}>Save explicit baseline</button><label>New material to compare<select className="select" multiple size={Math.min(6, Math.max(1, readyVersions.length))} value={updateIds} onChange={(event) => setUpdateIds(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}>{readyVersions.map((version) => <option key={version.id} value={version.id}>{version.title} · {version.content_hash.slice(0, 10)}</option>)}</select></label><button className="button primary" disabled={!newestSession || !state?.reviewCheckpoints.length || !updateIds.length || busy} onClick={analyzeChanges}>Analyze against baseline</button><p className="fine">{state?.changeSets.length ?? 0} saved change sets · past review checkpoints are retained.</p></article>
+        </section>
+        {analysisMessage && <div className="notice" role="status"><CircleAlert size={18}/><span>{analysisMessage}</span></div>}
+        {analysisResult && <pre className="live-analysis-result" aria-label="Grounded analysis results">{analysisResult}</pre>}
         <footer className="live-footer"><span><ShieldCheck size={15}/> Sample fixtures are never used in this workspace.</span><span>Preview AI runs on a no-payment free allowance. Source text and speech are processed by Cloudflare Workers AI; limits apply.</span></footer>
       </div>
     </main>

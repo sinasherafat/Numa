@@ -1,6 +1,6 @@
 # Resumable checkpoint
 
-Updated 2026-10-01 on the existing `codex/numa-v1` branch.
+Updated 2026-10-01 on the existing `codex/numa-v1` branch; changes since `1815f6d` are currently uncommitted.
 
 ## Repository and PR
 
@@ -15,7 +15,7 @@ Updated 2026-10-01 on the existing `codex/numa-v1` branch.
 
 - Supabase Preview project `tpstahcszkkzncpitdoa`; migrations through `0009_numa_live_audio`, all 24 application tables RLS-enabled, security/performance advisors clean.
 - Two-user RLS test: own row visible `1`, other row `0`, cross-owner updates `0`.
-- Workflow verifier/database digest mismatch was corrected. The safe RPC then passed credential validation and reached expected `P0002 Job not found`; there is still no completed source-ingest job.
+- The latest hosted upload verified the private Blob callback, then Supabase `workflow_create_source_job` failed with `42501 Invalid workflow credential`. The `numa.runtime_secrets` workflow digest row exists (64-character SHA-256); it does not match the current branch Preview `NUMA_WORKFLOW_SECRET`. No new job was created.
 - Private Vercel Blob, Supabase Auth, and Vercel Workflow are connected. No production deployment is in scope.
 
 ## Current AI refactor
@@ -24,14 +24,15 @@ Updated 2026-10-01 on the existing `codex/numa-v1` branch.
 - Preview adapter is direct Cloudflare Workers AI REST: `@cf/openai/gpt-oss-20b` JSON, `@cf/openai/whisper` transcription, and `@cf/myshell-ai/melotts` MP3 speech. It is replaceable behind `AiProvider` and makes no paid-provider fallback.
 - Limits are enforced: 4 MiB PDFs, 20 pages, 20,000 extracted characters, five-minute lessons, 4,000 script characters/550 words, 8 MiB/five-minute MP3, 3 MiB recordings, zero automatic model retries, and three workflow claims.
 - Cloudflare account ID/token are configured as Vercel Preview variables, but are absent from local `.env.local` and unavailable through the Vercel API connector. No real Cloudflare LLM/STT/TTS request has executed. A valid Numa/Supabase sign-in is also required to exercise the live application; the available saved credential was rejected. No AI Gateway, payment, paid plan, or model fallback was used.
-- **Implementation gaps:** F01 has no live adaptation proposal/acceptance route; F04 has no live multi-source comparison endpoint; F05 has no live baseline-change analysis endpoint. They remain fixture/sample-only, as the live workspace says. F02/F03/F06 have server code but are not live-verified with Cloudflare or a real PDF/audio.
+- **Implementation gaps:** F01 has no live adaptation proposal/acceptance route. F04/F05 now have authenticated Cloudflare-backed routes, source-topic validation, bounded prompt evidence, UUID-grounded physical-page citations, and persisted comparison/change results, but provider and hosted journey are blocked until the Workflow credential is synchronized. F02/F03/F06 have server code but are not live-verified with Cloudflare or a real PDF/audio.
 
 ## Verification of current working tree (2026-10-01)
 
-- `./node_modules/.bin/tsc --noEmit`: passed.
-- `./node_modules/.bin/eslint .`: passed.
-- `./node_modules/.bin/vitest run`: 3 files / 19 tests passed; the six AI adapter tests use deterministic mocked responses only.
+- `./node_modules/.bin/tsc --noEmit`: passed on current worktree.
+- `./node_modules/.bin/eslint .`: passed on current worktree.
+- `./node_modules/.bin/vitest run`: 4 files / 23 tests passed; AI adapter tests use deterministic mocked responses only.
 - `./node_modules/.bin/next build --webpack`: passed; existing `unpdf` `import.meta` warning remains.
+- `git diff --check`: passed.
 - `pnpm` wrapper commands attempted an automatic modules-directory sync, but npm registry access failed and non-interactive purge was refused. The installed local binaries above were used; no dependency directory was removed.
 - The final hosted Preview loaded all five reference routes in a real browser; five 1440×900 screenshots were captured. They verify rendering only; all five screens show sample fixtures. `/new` at 390×844 had `scrollWidth=390`, and browser console warnings/errors were empty.
 - The live private workspace redirects to Supabase login, and the saved sign-in attempt was rejected as invalid. The private PDF→LLM→TTS→Blob workflow and actual STT remain untested.
@@ -40,6 +41,6 @@ Updated 2026-10-01 on the existing `codex/numa-v1` branch.
 
 1. Sign into the Numa Preview with a valid account (the available saved credential was rejected) and keep the authenticated browser session available; do not send a password or token in chat.
 2. The Vercel Environment Variables page classifies `NUMA_AI_PROVIDER` as a Secret and provides no reveal control; its exact Preview value is therefore unverified. The account owner can confirm/reset that non-secret selector to `cloudflare-workers-ai` if the real request reports an unknown provider. Do not reveal or send the Cloudflare API token.
-3. Implement and test real F01/F04/F05 routes and user journeys.
+3. Implement and test the live F01 adaptation proposal/acceptance route; F04/F05 route code is present but awaits live validation.
 4. Run real provider smokes, a real PDF→generated script→TTS→private Blob→playback workflow, STT, assessment, consent/forget, persistence, Workflow retries/idempotency, and authenticated Preview browser checks.
 5. Keep PR #1 Draft until every live acceptance gate passes. Do not merge, enable auto-merge, bypass deployment protection, or deploy Production.
