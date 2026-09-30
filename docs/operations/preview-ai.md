@@ -24,7 +24,7 @@ Set these variables in the Vercel **Preview** environment only:
 
 Never use a `NEXT_PUBLIC_` prefix for the token. Do not put the value in Git, logs, a prompt, or chat. Local development uses the same variables in an ignored `.env.local`. Production configuration is outside this Preview task.
 
-Cloudflare's REST setup flow is: Cloudflare Dashboard → Workers AI → Use REST API → Create a Workers AI API Token, then copy the account ID. Use Cloudflare's provided token template; if creating a custom token, grant only Workers AI Read/Edit as required by the API. Do not enable Workers Paid or add a payment method. This repository has no connected Cloudflare account/token in the current Codex environment, so the live provider smoke remains pending those server-side values.
+Cloudflare's REST setup flow is: Cloudflare Dashboard → Workers AI → Use REST API → Create a Workers AI API Token, then copy the account ID. Use Cloudflare's provided token template; if creating a custom token, grant only Workers AI Read/Edit as required by the API. Do not enable Workers Paid or add a payment method. The signed-in Vercel dashboard showed these three variable names in Preview scope, but masks their values and the available Vercel API connection does not expose them. Their names are absent from this local `.env.local`; no token value is requested, copied, or logged. Consequently, the exact provider selector value and actual credentials cannot be verified or used for a real smoke request from this task. No real provider request is claimed.
 
 ## Enforced Preview limits
 
@@ -48,4 +48,4 @@ Limits fail closed with explicit error codes. A model/schema failure never subst
 - Provider smoke tests use tiny real requests and must be reported separately.
 - Preview acceptance requires a real text PDF to pass private upload → extraction → generated grounded JSON → real MP3 synthesis → private Blob persistence → authenticated playback. STT, assessment, comparison, changes, goals, consent, persistence, retry/idempotency, and deletion each need separate live evidence.
 
-Current status: code is configured for Workers AI, but no real Cloudflare request has run because these credentials are not available to the task. Do not report the live AI path as ready until smoke and end-to-end checks pass.
+Current status: source code is configured for direct Workers AI, and the three Preview variable names are present in Vercel. The exact `NUMA_AI_PROVIDER` value and token validity remain unverified; no real Cloudflare request has run. Do not report the live AI path as ready until smoke and end-to-end checks pass.

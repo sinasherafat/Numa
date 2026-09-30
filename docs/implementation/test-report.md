@@ -4,7 +4,13 @@ This report is updated from executed commands; unavailable checks are never reco
 
 ## Automated checks
 
-### Current uncommitted provider-refactor checkpoint (2026-10-01)
+### Current state after Cloudflare Preview configuration (2026-10-01)
+
+The signed-in Vercel dashboard lists `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `NUMA_AI_PROVIDER` in Preview scope. The values are masked; this task cannot verify that `NUMA_AI_PROVIDER` is exactly `cloudflare-workers-ai`, nor can it read/use the Cloudflare token through the available Vercel connector. These variables are absent from this machine's `.env.local`. The existing saved Numa/Supabase login was rejected, so private workspace routes are not available for live verification. No live Cloudflare request or private-source workflow was attempted or passed.
+
+The current local `HEAD`, cached remote feature ref, and GitHub PR #1 head are `b851380543150a3f52f63a59f52a6aa9bee57dd8`. Existing automated results below are valid for unchanged application code. The latest Vercel dashboard observation from the prior checkpoint showed Preview **Ready** for this SHA; the Vercel API connector currently returns 404 for that recorded deployment ID, so no newer API-side status is claimed.
+
+### Current local application checks
 
 These commands ran against the current working tree after the Cloudflare adapter changes. Direct local binaries were used because the `pnpm` Corepack wrapper tried to synchronize its modules directory and could not reach the npm registry; no module purge was allowed.
 
@@ -14,8 +20,8 @@ These commands ran against the current working tree after the Cloudflare adapter
 | ESLint | Passed | `./node_modules/.bin/eslint .` |
 | Unit tests | Passed | Vitest: 3 files, 19 tests. Six `provider.test.ts` tests mock HTTP and do not prove provider availability. |
 | Next.js production build | Passed with warning | `./node_modules/.bin/next build --webpack`; all 11 Workflow steps built. Existing `unpdf` `import.meta` critical-dependency warning remains. |
-| Real provider smoke | Not run | Cloudflare account ID/token are not available to this task. No AI success is claimed. |
-| Hosted Preview for current working tree | Vercel check passed; browser interaction blocked | GitHub reports the Vercel check for current SHA `b7084893b14ac2b91297b1195e01c4399b961505` as success, and Vercel's PR bot reports Ready at `https://numa-git-codex-numa-v1-sinas-projects-111632f8.vercel.app`. Opening the Preview redirected to Vercel login/SSO, so no current hosted app flows or screenshots were verified. |
+| Real provider smoke | Not run | Preview variable names exist, but their values cannot be inspected here and no authenticated live application session is available. No AI success is claimed. |
+| Hosted Preview | Sample route render checked; private route blocked | Preview URL: `https://numa-git-codex-numa-v1-sinas-projects-111632f8.vercel.app`. `/new`, `/listen`, `/compare`, `/topics/spaced-practice/changes`, and `/explain/feedback` render explicitly labeled sample data. `/workspace` redirects to `/login`; the available saved sign-in was rejected. These screenshots are visual-reference checks only, not live feature verification. |
 
 | Check | Result | Evidence |
 | --- | --- | --- |
@@ -47,9 +53,9 @@ The 2026-09-30 local rerun used the current source in the in-app Chromium browse
 - J05: baseline moved only after explicit review and could be kept at the prior review.
 - Source grounding: a citation opened physical PDF page 4 and the return path preserved the listening route.
 
-The hosted rerun repeated J01–J06, the future-only chapter update, explicit memory consent, baseline review, comparison relationships, and physical-page source navigation against a Vercel deployment reported as `READY` with target `preview`. The hosted browser produced no console errors. The canonical Preview is protected by the owner's Vercel SSO policy; authenticated browser access and `vercel curl` both succeeded.
+Historical hosted-browser evidence for J01–J06 applies only to the checkpoint/deployment documented when it ran. The current hosted session verified sample route rendering, but not authenticated live workspace journeys.
 
-For the current infrastructure commit, Vercel reported the new deployment `READY` and its Git metadata matched the branch head. Authenticated `vercel curl` returned 200 for `/api/health`, `/new`, `/listen`, `/explain/feedback`, `/compare`, `/topics/spaced-practice/changes`, and `/login`; `/workspace` returned the expected unauthenticated 307 redirect. The health body was minimal and all six HTML responses contained their expected page markers. Runtime error logs were empty. A fresh graphical hosted session stopped at Vercel→GitHub login, and a standalone Chromium download returned regional CDN HTTP 403. Deployment Protection was not disabled or bypassed in a browser, so the five checked-in reference screenshots are prior Preview captures of the unchanged sample routes, not falsely labeled current hosted recaptures.
+Previous checkpoint HTTP smoke evidence remains historical; it does not establish current provider availability or authenticated access. In this turn, browser inspection confirmed the Preview sample pages and the private route's login boundary. Deployment Protection was not disabled or bypassed.
 
 ## Deployment safety
 
@@ -57,4 +63,4 @@ The first Git-triggered deployment of this newly created project was incorrectly
 
 ## Live provider boundary
 
-The current live AI adapter calls Cloudflare Workers AI directly: gpt-oss-20b for JSON generation, Whisper for STT, and MeloTTS for MP3 synthesis. It uses server-only credentials, strict schemas, bounded inputs/outputs, no provider retries, and never substitutes sample data. Adapter tests are mocked contract tests only. A real PDF→podcast Workflow run still requires an owner-created Cloudflare Workers AI API token and account ID in Vercel Preview. F01, F04, and F05 also lack live provider-backed routes. The earlier hosted-browser and screenshot results apply to the prior committed Preview, not this working tree; refresh them only after a new commit is deployed READY and authenticated browser access is available.
+The current live AI adapter calls Cloudflare Workers AI directly: gpt-oss-20b for JSON generation, Whisper for STT, and MeloTTS for MP3 synthesis. It uses server-only credentials, strict schemas, bounded inputs/outputs, no provider retries, and never substitutes sample data. Adapter tests are mocked contract tests only. Vercel Preview variable names are present, but no real provider request or PDF→podcast Workflow run has been verified. F01, F04, and F05 also lack live provider-backed routes. Authenticated browser checks require a valid Numa account session; the available saved sign-in was rejected.
