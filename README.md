@@ -8,7 +8,9 @@ The sample workspace is a fully interactive, explicitly labeled demo fixture. It
 
 `/workspace` is a separate authenticated live path backed by an isolated Supabase Preview project, ownership RLS, a private Vercel Blob store, and Vercel Workflow. It implements private PDF upload and deletion, durable/idempotent ingestion, physical-page extraction, persisted jobs, goal-shaped plans/outcomes, private audio streaming, timed transcript persistence, learning-memory and raw-audio consent, recorded or typed explain-back entry, and server-verified sessions. It never falls back to the sample workspace.
 
-The live AI calls are implemented for grounded generation, STT, and TTS through Vercel AI Gateway. Provider smoke tests currently return `403` because the account requires a valid credit card for Gateway access. The PR therefore remains Draft: uploaded files and job failures remain real and persisted, but generated live lessons cannot be claimed as successful until that external account gate is resolved.
+The live AI provider layer uses the Cloudflare Workers AI REST API directly for source-grounded JSON generation, Whisper speech-to-text, and MeloTTS. It does not use Vercel AI Gateway. The documented Workers Free allocation is 10,000 Neurons per UTC day; when the free allocation is exhausted, calls fail rather than automatically billing. Do not upgrade to Workers Paid for this Preview. Cloudflare says Workers AI Customer Content is not used for model training or service improvement. Source text is sent to Cloudflare for inference only after the upload disclosure is acknowledged.
+
+The Preview provider still needs two server-only values in the Vercel **Preview** environment: `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. This Codex environment has no connected Cloudflare account or token, so no real provider request has yet been executed. Until those are available, no live AI output is claimed and the PR stays Draft. See `docs/operations/preview-ai.md` for exact setup and enforced limits.
 
 ## Local setup
 
@@ -42,7 +44,9 @@ Copy only the variable names from `.env.example` into the Vercel Preview environ
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` identify the isolated Supabase project. They are public identifiers; authorization is still enforced with Supabase Auth and RLS.
 - `BLOB_READ_WRITE_TOKEN` comes from the connected private Blob store and stays server-side.
 - `NUMA_WORKFLOW_SECRET` authenticates the narrow Workflow RPC surface; only its SHA-256 digest is stored in Postgres.
-- `NUMA_AI_MODEL`, `NUMA_STT_MODEL`, and `NUMA_TTS_MODEL` select Gateway models. Vercel injects OIDC in deployed Preview functions.
+- `NUMA_AI_PROVIDER=cloudflare-workers-ai` selects the provider adapter.
+- `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are server-only Cloudflare Workers AI credentials. Scope the token only to Workers AI; never expose it to the browser or commit it.
+- Vercel OIDC remains available for Vercel infrastructure but is not used to call the AI provider.
 
 Migrations are intentionally not run during `next build`. The nine checked-in migrations are applied explicitly to the isolated `numa-preview` database. Never point Preview at Production data. See `docs/operations/release.md` for the ordered post-merge release path.
 

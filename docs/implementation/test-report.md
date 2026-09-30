@@ -4,11 +4,24 @@ This report is updated from executed commands; unavailable checks are never reco
 
 ## Automated checks
 
+### Current uncommitted provider-refactor checkpoint (2026-10-01)
+
+These commands ran against the current working tree after the Cloudflare adapter changes. Direct local binaries were used because the `pnpm` Corepack wrapper tried to synchronize its modules directory and could not reach the npm registry; no module purge was allowed.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| TypeScript strict typecheck | Passed | `./node_modules/.bin/tsc --noEmit` after production build regenerated Next types |
+| ESLint | Passed | `./node_modules/.bin/eslint .` |
+| Unit tests | Passed | Vitest: 3 files, 19 tests. Six `provider.test.ts` tests mock HTTP and do not prove provider availability. |
+| Next.js production build | Passed with warning | `./node_modules/.bin/next build --webpack`; all 11 Workflow steps built. Existing `unpdf` `import.meta` critical-dependency warning remains. |
+| Real provider smoke | Not run | Cloudflare account ID/token are not available to this task. No AI success is claimed. |
+| Hosted Preview for current working tree | Not deployed | Current adapter/docs changes are uncommitted and do not match the earlier Preview SHA. |
+
 | Check | Result | Evidence |
 | --- | --- | --- |
 | TypeScript strict typecheck | Passed | `./node_modules/.bin/tsc --noEmit` |
 | ESLint | Passed | `./node_modules/.bin/eslint .` |
-| Unit tests | Passed | Vitest: 2 files, 13 deterministic contract/revision/consent tests |
+| Unit tests | Superseded by current result above | Prior checkpoint: 2 files, 13 deterministic contract/revision/consent tests |
 | Next.js production build | Passed | Next.js 16.3.3 Webpack production build; 15 static/dynamic routes emitted plus 11 Workflow steps |
 | Browser journeys | Latest source passed locally; hosted HTTP passed; hosted interactive session blocked by Vercel SSO login | In-app Chromium passed J01–J06 and source evidence navigation locally; all five references plus login had 0px overflow at 1440/390/320 with no console warning/error |
 | Packaged Playwright runner | Environment-blocked | All 9 tests are discovered, but the Playwright Chromium download returns CDN HTTP 403 (`service is not available in your location`); no browser executable exists on the host |
@@ -17,7 +30,7 @@ This report is updated from executed commands; unavailable checks are never reco
 | Ownership isolation | Passed | Transactional two-user check: own visible 1, other visible 0, cross-owner updates 0; transaction rolled back |
 | Database advisors | Passed | Supabase security and performance advisors returned no findings after migrations |
 | Workflow credential gate | Repaired and RPC-verified | The current Preview `NUMA_WORKFLOW_SECRET` initially returned 401 / PostgreSQL 42501 `Invalid workflow credential`. The Preview database digest was updated to match that existing secret without exposing it. Repeating a non-mutating claim for a nonexistent UUID passed the credential check and reached the expected PostgreSQL `P0002 Job not found`. No actual source-ingest run exists yet; the jobs table was empty. |
-| AI provider smoke | Blocked by Vercel account billing | Real, minimal server-side AI SDK calls for text (`openai/gpt-5.4-nano`), STT (`openai/whisper-1`, 0.01-second silent WAV), and TTS (`openai/tts-1`, one-word input), using the existing Vercel OIDC credential, each returned the same HTTP 403: `AI Gateway requires a valid credit card on file to service requests`. This is an account-level billing gate, not an expired/missing Gateway token. The configured model IDs were present in Vercel's live model catalog. No `OPENAI_API_KEY` or `AI_GATEWAY_API_KEY` exists in the Preview environment; no direct OpenAI credential or OpenAI tool integration is available in this Codex session. No provider operation ran, no purchase occurred, and no fixture fallback was attempted. |
+| AI provider smoke | Previous Gateway diagnosis; current smoke pending | The old Gateway calls returned HTTP 403 requiring a credit card. Current code removes Gateway and selects Cloudflare Workers AI, but no real Cloudflare request has been run. No payment was made, and no fixture fallback was attempted. |
 
 ## Browser review checklist
 
@@ -44,4 +57,4 @@ The first Git-triggered deployment of this newly created project was incorrectly
 
 ## Live provider boundary
 
-The live path uses real Supabase Auth/Postgres, private Blob, and Vercel Workflow. Grounded text, STT, and TTS use real Gateway SDK calls with timeouts and bounded retries. The exact text-generation response currently blocks at Vercel account billing before provider execution. STT and TTS have not been reported as successful or provider-executed; no sample content is substituted into live routes. A Preview Workflow credential mismatch was corrected by synchronizing the stored digest with the already-configured Preview secret; the same RPC now passes secret validation. A complete PDF→podcast Workflow run still requires the AI account gate to be cleared. The final hosted-browser section and screenshot paths are updated only after the latest commit reaches a READY Preview.
+The current live AI adapter calls Cloudflare Workers AI directly: gpt-oss-20b for JSON generation, Whisper for STT, and MeloTTS for MP3 synthesis. It uses server-only credentials, strict schemas, bounded inputs/outputs, no provider retries, and never substitutes sample data. Adapter tests are mocked contract tests only. A real PDF→podcast Workflow run still requires an owner-created Cloudflare Workers AI API token and account ID in Vercel Preview. F01, F04, and F05 also lack live provider-backed routes. The earlier hosted-browser and screenshot results apply to the prior committed Preview, not this working tree; refresh them only after a new commit is deployed READY and authenticated browser access is available.

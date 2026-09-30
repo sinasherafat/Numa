@@ -1,6 +1,5 @@
 import { del, put } from "@vercel/blob";
-import { gateway, type GatewayTranscriptionModelId } from "@ai-sdk/gateway";
-import { transcribe } from "ai";
+import { AiProviderError, getAiProvider } from "@/lib/ai/provider";
 import { apiData, apiError } from "@/lib/domain";
 import { getVerifiedUser } from "@/lib/supabase/server";
 
@@ -11,12 +10,9 @@ const MAX_AUDIO_BYTES = 3 * 1024 * 1024;
 const AUDIO_TYPES = new Set(["audio/webm", "audio/mp4", "audio/mpeg", "audio/wav", "audio/ogg"]);
 
 function providerCode(error: unknown) {
+  if (error instanceof AiProviderError) return error.code;
   const candidate = error as { statusCode?: number; status?: number; message?: string };
   const status = candidate?.statusCode ?? candidate?.status;
-  const message = candidate?.message?.toLowerCase() ?? "";
-  if (status === 402 || status === 403 || message.includes("credit card") || message.includes("credits")) {
-    return "AI_CREDITS_REQUIRED";
-  }
   if (status === 429) return "AI_RATE_LIMIT";
   return "AI_PROVIDER_FAILED";
 }
@@ -42,6 +38,7 @@ export async function POST(request: Request) {
   let storedPath: string | null = null;
 
   try {
+    const aiProvider = getAiProvider();
     const stored = await put(pathname, new Blob([bytes.buffer], { type: audio.type }), {
       access: "private",
       addRandomSuffix: false,
@@ -50,12 +47,7 @@ export async function POST(request: Request) {
     });
     storedPath = stored.pathname;
 
-    const result = await transcribe({
-      model: gateway.transcription((process.env.NUMA_STT_MODEL ?? "openai/whisper-1") as GatewayTranscriptionModelId),
-      audio: bytes,
-      maxRetries: 2,
-      abortSignal: AbortSignal.timeout(45_000),
-    });
+    const result = await aiProvider.transcribe(bytes);
     const transcript = result.text.trim();
     if (!transcript) throw new Error("EMPTY_TRANSCRIPT");
 
@@ -75,11 +67,12 @@ export async function POST(request: Request) {
       await del(storedPath);
       storedPath = null;
     }
-    return apiData({ ...data, language: result.language, durationInSeconds: result.durationInSeconds, rawAudioRetained: keepRaw }, 201);
+    return apiData({ ...data, language: result.language ?? null, rawAudioRetained: keepRaw }, 201);
   } catch (error) {
     if (storedPath && rawConsent?.enabled !== true) await del(storedPath).catch(() => undefined);
     const code = providerCode(error);
-    if (code === "AI_CREDITS_REQUIRED") return apiError(code, "Speech transcription requires AI Gateway billing access. You can still type and save your explanation.", 503);
+    if (code === "AI_PROVIDER_NOT_CONFIGURED") return apiError(code, "Preview speech transcription is not configured yet. You can still type and save your explanation.", 503);
+    if (code === "AI_DAILY_LIMIT_REACHED") return apiError(code, "The Preview AI daily free allowance has been reached. Try again after it resets.", 429);
     if (code === "AI_RATE_LIMIT") return apiError(code, "Speech transcription is temporarily rate limited. Try again or type your explanation.", 429, true);
     return apiError(code, "Speech transcription failed. You can still type and save your explanation.", 503, true);
   }

@@ -2,6 +2,7 @@ import { del, get } from "@vercel/blob";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { start } from "workflow/api";
 import { z } from "zod";
+import { getAiProvider, PREVIEW_LIMITS } from "@/lib/ai/provider";
 import { apiError } from "@/lib/domain";
 import { getVerifiedUser } from "@/lib/supabase/server";
 import { workflowRpc } from "@/lib/workflow-db";
@@ -15,7 +16,8 @@ const payloadSchema = z.object({
   goal: z.enum(["understand", "presentation", "compare"]),
   question: z.string().trim().min(3).max(500),
   level: z.enum(["beginner", "familiar", "advanced"]),
-  duration: z.union([z.literal(5), z.literal(10), z.literal(20)]),
+  duration: z.literal(5),
+  aiProcessingNoticeAccepted: z.literal(true),
   idempotencyKey: z.string().min(8).max(200),
 });
 
@@ -31,7 +33,7 @@ type SourceJobResult = {
 async function readPrivateBlob(pathname: string) {
   const blob = await get(pathname, { access: "private", useCache: false });
   if (!blob?.stream) throw new Error("SOURCE_MISSING");
-  if (blob.blob.size > 20 * 1024 * 1024) throw new Error("SOURCE_LIMIT_EXCEEDED");
+  if (blob.blob.size > PREVIEW_LIMITS.pdfBytes) throw new Error("SOURCE_LIMIT_EXCEEDED");
   return new Uint8Array(await new Response(blob.stream).arrayBuffer());
 }
 
@@ -54,10 +56,11 @@ export async function POST(request: Request) {
         if (!parsed.success || !/^uploads\/[a-f0-9-]{36}\.pdf$/i.test(pathname)) {
           throw new Error("INVALID_REQUEST");
         }
+        getAiProvider();
         const tokenPayload: UploadTokenPayload = { ...parsed.data, ownerId: user.id };
         return {
           allowedContentTypes: ["application/pdf"],
-          maximumSizeInBytes: 20 * 1024 * 1024,
+          maximumSizeInBytes: PREVIEW_LIMITS.pdfBytes,
           addRandomSuffix: false,
           allowOverwrite: false,
           tokenPayload: JSON.stringify(tokenPayload),
@@ -75,7 +78,7 @@ export async function POST(request: Request) {
             errorCode = "SOURCE_UNSUPPORTED";
           }
         } catch (error) {
-          status = error instanceof Error && error.message === "SOURCE_LIMIT_EXCEEDED" ? "failed" : "unsupported";
+            status = error instanceof Error && error.message === "SOURCE_LIMIT_EXCEEDED" ? "failed" : "unsupported";
           errorCode = error instanceof Error ? error.message : "SOURCE_VALIDATION_FAILED";
           bytes = new Uint8Array();
         }
@@ -115,6 +118,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const code = error instanceof Error ? error.message : "UPLOAD_FAILED";
     if (code === "AUTH_REQUIRED") return apiError("AUTH_REQUIRED", "Sign in to upload a private source.", 401);
+    if (code === "AI_PROVIDER_NOT_CONFIGURED") return apiError("AI_PROVIDER_NOT_CONFIGURED", "Preview AI needs Cloudflare account credentials before private source processing can start.", 503);
     return apiError("INVALID_REQUEST", "The private PDF upload could not be authorized.", 400);
   }
 }

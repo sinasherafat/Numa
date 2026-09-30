@@ -3,6 +3,7 @@
 import { upload } from "@vercel/blob/client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PREVIEW_LIMITS } from "@/lib/ai/limits";
 import { Brain, CheckCircle2, CircleAlert, Database, FileText, GitCompareArrows, Headphones, History, LogOut, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Trash2, UploadCloud } from "lucide-react";
 
 type LiveState = {
@@ -17,16 +18,21 @@ type LiveState = {
 };
 
 const features = [
-  { id: "F01", icon: Headphones, title: "Adaptive listening", detail: "Accepted questions create future-only revisions; completed audio stays immutable." },
-  { id: "F02", icon: Brain, title: "My Understanding", detail: "Consent, evidence types, edit and forget use private owner-scoped rows." },
-  { id: "F03", icon: Mic2, title: "Explain it back", detail: "Confirmed text is saved now; STT and grounded assessment require Gateway access." },
-  { id: "F04", icon: GitCompareArrows, title: "Compare sources", detail: "Available after 2–5 private sources finish extraction and generation." },
-  { id: "F05", icon: History, title: "What changed", detail: "Explicit review baselines stay fixed until you mark a new review." },
-  { id: "F06", icon: Target, title: "Learn for a goal", detail: "The selected goal shapes the lesson and editable outcomes." },
+  { id: "F01", icon: Headphones, title: "Adaptive listening", detail: "The sample workspace demonstrates future-only adaptation. Live revision acceptance still needs implementation." },
+  { id: "F02", icon: Brain, title: "My Understanding", detail: "Live consent and owner-scoped evidence are saved. Explain-back memory is recorded only with consent." },
+  { id: "F03", icon: Mic2, title: "Explain it back", detail: "Confirmed text is saved privately; free-provider speech transcription and grounded assessment need Preview credentials." },
+  { id: "F04", icon: GitCompareArrows, title: "Compare sources", detail: "The sample route is illustrative; live multi-source comparison is not yet implemented." },
+  { id: "F05", icon: History, title: "What changed", detail: "The sample route is illustrative; live change analysis and baseline action are not yet implemented." },
+  { id: "F06", icon: Target, title: "Learn for a goal", detail: "Live source ingestion creates goal-shaped learning outputs, bounded to 5 minutes in Preview." },
 ];
 
 function statusLabel(job: LiveState["jobs"][number]) {
-  if (job.state === "failed" && job.error_code === "AI_CREDITS_REQUIRED") return "Source secured; AI generation blocked by Gateway billing access";
+  if (job.state === "failed" && job.error_code === "AI_PROVIDER_NOT_CONFIGURED") return "Source secured; Preview AI provider needs its server-side credentials";
+  if (job.state === "failed" && job.error_code === "AI_DAILY_LIMIT_REACHED") return "Source secured; Preview free AI allowance reached for today";
+  if (job.state === "failed" && job.error_code === "SOURCE_LIMIT_EXCEEDED") return "PDF exceeds the 4 MB Preview limit";
+  if (job.state === "failed" && job.error_code === "SOURCE_PAGE_LIMIT") return "PDF exceeds the 20 page Preview limit";
+  if (job.state === "failed" && job.error_code === "SOURCE_TEXT_LIMIT_EXCEEDED") return "Extracted text exceeds the 20,000 character Preview limit";
+  if (job.state === "failed" && job.error_code === "PREVIEW_DURATION_LIMIT") return "Preview lessons are limited to 5 minutes";
   if (job.state === "failed") return `Failed: ${job.error_code ?? "unknown"}`;
   if (job.state === "succeeded") return "Private lesson ready";
   return `${job.state.replace("_", " ")} · ${job.checkpoint?.replaceAll("_", " ") ?? "waiting"}`;
@@ -40,7 +46,7 @@ export function LiveWorkspace() {
   const [goal, setGoal] = useState<"understand" | "presentation" | "compare">("understand");
   const [question, setQuestion] = useState("What are the central claims and their limits?");
   const [level, setLevel] = useState<"beginner" | "familiar" | "advanced">("familiar");
-  const [duration, setDuration] = useState<5 | 10 | 20>(10);
+  const duration = 5 as const;
   const [teachback, setTeachback] = useState("");
   const [recording, setRecording] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -84,7 +90,7 @@ export function LiveWorkspace() {
     const form = event.currentTarget;
     const file = new FormData(form).get("pdf");
     if (!(file instanceof File)) return;
-    if (file.size > 20 * 1024 * 1024) return setError("PDFs must be 20 MB or smaller.");
+    if (file.size > PREVIEW_LIMITS.pdfBytes) return setError("Preview PDFs must be 4 MB or smaller.");
     const signature = new TextDecoder().decode(new Uint8Array(await file.slice(0, 5).arrayBuffer()));
     if (signature !== "%PDF-") return setError("This file does not have a valid PDF signature.");
     setBusy(true); setError(""); setProgress(0);
@@ -93,7 +99,7 @@ export function LiveWorkspace() {
         access: "private",
         handleUploadUrl: "/api/live/upload",
         contentType: "application/pdf",
-        clientPayload: JSON.stringify({ title: file.name.replace(/\.pdf$/i, ""), goal, question, level, duration, idempotencyKey: crypto.randomUUID() }),
+        clientPayload: JSON.stringify({ title: file.name.replace(/\.pdf$/i, ""), goal, question, level, duration, aiProcessingNoticeAccepted: new FormData(form).get("ai-processing-notice") === "on", idempotencyKey: crypto.randomUUID() }),
         onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
       });
       for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -134,7 +140,8 @@ export function LiveWorkspace() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message ?? "Explain-back could not be saved.");
       setTeachback("");
-      setError(payload.data.assessment.message);
+      setError(payload.data.assessment.message ?? `Confirmed explanation saved. Grounded assessment: ${payload.data.assessment.state}; ${payload.data.assessment.findings?.length ?? 0} cited findings.`);
+      await refresh();
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Explain-back failed."); }
     finally { setBusy(false); }
   }
@@ -196,8 +203,9 @@ export function LiveWorkspace() {
             <form className="live-form" onSubmit={uploadPdf}>
               <div className="goal-row">{(["understand", "presentation", "compare"] as const).map((item) => <button className={`goal-pill ${goal === item ? "active" : ""}`} type="button" key={item} onClick={() => setGoal(item)}>{item}</button>)}</div>
               <label htmlFor="live-question">Your question</label><input id="live-question" className="input" value={question} onChange={(event) => setQuestion(event.target.value)} required minLength={3}/>
-              <div className="live-fields"><label>Familiarity<select className="select" value={level} onChange={(event) => setLevel(event.target.value as typeof level)}><option value="beginner">Beginner</option><option value="familiar">Familiar</option><option value="advanced">Advanced</option></select></label><label>Duration<select className="select" value={duration} onChange={(event) => setDuration(Number(event.target.value) as typeof duration)}><option value="5">5 min</option><option value="10">10 min</option><option value="20">20 min</option></select></label></div>
-              <label className="dropzone"><FileText size={24}/><strong>{busy ? `Uploading ${progress}%` : "Choose a text-based PDF"}</strong><span>Private · up to 20 MB · PDF signature verified server-side</span><input name="pdf" type="file" accept="application/pdf,.pdf" required disabled={busy}/></label>
+              <div className="live-fields"><label>Familiarity<select className="select" value={level} onChange={(event) => setLevel(event.target.value as typeof level)}><option value="beginner">Beginner</option><option value="familiar">Familiar</option><option value="advanced">Advanced</option></select></label><label>Preview lesson duration<input className="input" value="Up to 5 min" readOnly aria-label="Preview lesson duration"/></label></div>
+              <label className="dropzone"><FileText size={24}/><strong>{busy ? `Uploading ${progress}%` : "Choose a text-based PDF"}</strong><span>Private · up to 4 MB and 20 pages · 20,000 extracted characters max</span><input name="pdf" type="file" accept="application/pdf,.pdf" required disabled={busy}/></label>
+              <label className="fine provider-consent"><input type="checkbox" name="ai-processing-notice" required/> I understand extracted source text is sent to Cloudflare Workers AI for inference. Cloudflare states that Workers AI content is not used to train or improve services. I will not upload content I lack permission to process.</label>
               <button className="button primary" disabled={busy}>{busy ? "Securing source…" : "Upload and create lesson"}</button>
             </form>
           </section>
@@ -211,7 +219,7 @@ export function LiveWorkspace() {
         {!!state?.chapters.length && <section className="card"><div className="row between"><div><span className="eyebrow">Authenticated stream</span><h2>Your generated audio</h2></div><span className="badge green">Private</span></div><div className="live-list">{state.chapters.map((chapter) => <div className="live-audio" key={chapter.id}><div><strong>{chapter.objective}</strong><span>{Math.ceil(chapter.duration_ms / 60000)} min · no permanent public URL</span></div><audio controls preload="metadata" src={`/api/live/audio/${chapter.id}`}/></div>)}</div></section>}
         {!!state?.outcomes.length && <section className="card"><div className="row between"><div><span className="eyebrow">Goal-shaped artifacts</span><h2>Your generated outcomes</h2></div><button className="button compact" onClick={downloadOutcomes}>Download Markdown</button></div><div className="source-live-grid">{state.outcomes.filter((item) => item.type !== "audio").map((outcome) => <article className="source-live" key={outcome.id}><Target/><div><strong>{outcome.type.replaceAll("_", " ")}</strong><span>{outcome.status} · generated from your private snapshot</span></div></article>)}</div></section>}
         <section className="feature-live-grid">{features.map(({ id, icon: Icon, title, detail }) => <article className="card live-feature" key={id}><div className="row between"><Icon/><span className="badge purple">{id}</span></div><h3>{title}</h3><p className="muted">{detail}</p>{id === "F02" && <div className="row"><button className={`switch ${memoryEnabled ? "on" : ""}`} role="switch" aria-checked={memoryEnabled} aria-label="Private learning memory" onClick={() => setConsent(!memoryEnabled)} disabled={busy}/><strong>{memoryEnabled ? "On by consent" : "Off"}</strong></div>}{id === "F03" && <div className="live-teachback"><div className="row wrap"><button className={`button compact ${recording ? "danger" : ""}`} disabled={!newestSession || busy} onClick={toggleRecording}>{recording ? "Stop recording" : "Record explanation"}</button><div className="row"><button className={`switch ${rawAudioEnabled ? "on" : ""}`} role="switch" aria-checked={rawAudioEnabled} aria-label="Retain raw voice recordings" onClick={() => setConsent(!rawAudioEnabled)} disabled={busy}/><span className="fine">Keep raw audio</span></div></div><textarea className="input" rows={3} placeholder={newestSession ? "Record or explain the key idea in your own words…" : "Available after a private session is ready"} value={teachback} onChange={(event) => setTeachback(event.target.value)} disabled={!newestSession}/><button className="button compact" disabled={!newestSession || teachback.trim().length < 20 || busy} onClick={saveTeachback}>Save confirmed text</button></div>}</article>)}</section>
-        <footer className="live-footer"><span><ShieldCheck size={15}/> Sample fixtures are never used in this workspace.</span><span>AI generation is currently expected to report a real Gateway access blocker until billing access is enabled.</span></footer>
+        <footer className="live-footer"><span><ShieldCheck size={15}/> Sample fixtures are never used in this workspace.</span><span>Preview AI runs on a no-payment free allowance. Source text and speech are processed by Cloudflare Workers AI; limits apply.</span></footer>
       </div>
     </main>
   );
