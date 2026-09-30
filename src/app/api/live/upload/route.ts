@@ -39,17 +39,20 @@ async function readPrivateBlob(pathname: string) {
 
 export async function POST(request: Request) {
   let body: HandleUploadBody;
+  let stage = "read_upload_event";
   try {
     body = (await request.json()) as HandleUploadBody;
   } catch {
     return apiError("INVALID_REQUEST", "The upload request is invalid.", 400);
   }
+  stage = body.type === "blob.upload-completed" ? "verify_upload_callback" : "authorize_upload";
 
   try {
     const result = await handleUpload({
       request,
       body,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
+        stage = "authorize_upload";
         const user = await getVerifiedUser();
         if (!user) throw new Error("AUTH_REQUIRED");
         const parsed = payloadSchema.safeParse(clientPayload ? JSON.parse(clientPayload) : null);
@@ -67,11 +70,13 @@ export async function POST(request: Request) {
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
+        stage = "verify_upload_callback";
         const parsed = z.object({ ownerId: z.string().uuid() }).and(payloadSchema).parse(JSON.parse(tokenPayload ?? "null"));
         let bytes: Uint8Array;
         let status: "processing" | "unsupported" | "failed" = "processing";
         let errorCode: string | null = null;
         try {
+          stage = "read_private_blob";
           bytes = await readPrivateBlob(blob.pathname);
           if (new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-") {
             status = "unsupported";
@@ -91,6 +96,7 @@ export async function POST(request: Request) {
           level: parsed.level,
           duration: parsed.duration,
         };
+        stage = "persist_source_job";
         const job = await workflowRpc<SourceJobResult>("workflow_create_source_job", {
           p_owner_id: parsed.ownerId,
           p_title: parsed.title,
@@ -102,14 +108,18 @@ export async function POST(request: Request) {
           p_error_code: errorCode,
         });
         if (job.duplicate && job.file_key !== blob.pathname) {
+          stage = "remove_duplicate_blob";
           await del(blob.pathname);
           return;
         }
         if (status !== "processing" || !job.job_id || job.workflow_run_id) return;
         try {
+          stage = "start_source_workflow";
           const run = await start(ingestSourceWorkflow, [job.job_id]);
+          stage = "attach_source_workflow";
           await workflowRpc<void>("workflow_attach_run", { p_job_id: job.job_id, p_run_id: run.runId });
-        } catch {
+        } catch (error) {
+          console.error("Numa source workflow dispatch failed", { stage, code: error instanceof Error ? error.message : "UNKNOWN" });
           await workflowRpc<void>("workflow_fail", { p_job_id: job.job_id, p_error_code: "WORKFLOW_START_FAILED", p_retryable: true });
         }
       },
@@ -117,8 +127,13 @@ export async function POST(request: Request) {
     return Response.json(result);
   } catch (error) {
     const code = error instanceof Error ? error.message : "UPLOAD_FAILED";
+    console.error("Numa upload request failed", { stage, code });
     if (code === "AUTH_REQUIRED") return apiError("AUTH_REQUIRED", "Sign in to upload a private source.", 401);
     if (code === "AI_PROVIDER_NOT_CONFIGURED") return apiError("AI_PROVIDER_NOT_CONFIGURED", "Preview AI needs Cloudflare account credentials before private source processing can start.", 503);
+    if (stage === "verify_upload_callback") return apiError("UPLOAD_CALLBACK_INVALID", "Vercel Blob did not authenticate its private upload callback.", 400);
+    if (["persist_source_job", "attach_source_workflow", "start_source_workflow"].includes(stage)) {
+      return apiError("SOURCE_JOB_PERSISTENCE_FAILED", "The PDF was privately uploaded but its processing job could not be recorded. Retry after checking the Preview Workflow connection.", 503, true);
+    }
     return apiError("INVALID_REQUEST", "The private PDF upload could not be authorized.", 400);
   }
 }
