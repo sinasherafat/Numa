@@ -2,5 +2,5 @@ import { LoginForm } from "@/components/login-form";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;
-  return <LoginForm nextPath={next?.startsWith("/") ? next : "/workspace"} />;
+  return <LoginForm nextPath={next?.startsWith("/") && !next.startsWith("//") ? next : "/workspace"} />;
 }

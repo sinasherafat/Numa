@@ -9,4 +9,6 @@ Updated 2026-09-30 on `codex/numa-v1`.
 - Local `typecheck`, `lint`, 13 unit tests, and Webpack production build pass. Turbopack stalled with Workflow; the production script deliberately uses the official `--webpack` fallback.
 - Implemented live path: Auth, RLS state, private PDF upload/deletion, idempotent durable Workflow, unpdf extraction, grounded plan, TTS, private audio, transcript spans, outcomes, private audio streaming, consent, typed/recorded explain-back, and STT adapter.
 - Genuine blocker: Vercel AI Gateway smoke returns HTTP 403 and requires a valid credit card. No purchase was authorized; no fixture fallback is used.
-- Next checkpoint: commit/push, update existing PR, deploy Preview only, wait READY, run hosted browser checks, capture five screenshots, and verify all four SHAs.
+- The implementation was committed and pushed to the existing branch/PR. The Git-triggered deployment reached READY; official deployment metadata matched the branch head, primary hosted routes returned expected responses, and runtime error logs were empty.
+- Remaining human action before a fully interactive hosted rerun: sign in through Vercel Deployment Protection in the graphical browser. Do not disable protection. Five checked-in screenshots are prior Preview captures of the unchanged sample routes; recapture only after authenticated browser access.
+- At resume, verify `git rev-parse HEAD`, `git ls-remote`, PR `headRefOid`, and Vercel `gitSource.sha` match because a documentation-only follow-up commit may have triggered a newer Preview.

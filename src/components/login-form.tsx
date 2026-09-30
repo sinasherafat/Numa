@@ -18,15 +18,16 @@ export function LoginForm({ nextPath = "/workspace" }: { nextPath?: string }) {
     setBusy(true);
     setMessage("");
     const supabase = createClient();
+    const safeNext = nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/workspace";
     if (mode === "sign-in") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setMessage(error.message);
       else {
-        router.push(nextPath.startsWith("/") ? nextPath : "/workspace");
+        router.push(safeNext);
         router.refresh();
       }
     } else {
-      const redirectTo = `${window.location.origin}/auth/confirm?next=${encodeURIComponent(nextPath)}`;
+      const redirectTo = `${window.location.origin}/auth/confirm?next=${encodeURIComponent(safeNext)}`;
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -34,7 +35,7 @@ export function LoginForm({ nextPath = "/workspace" }: { nextPath?: string }) {
       });
       if (error) setMessage(error.message);
       else if (data.session) {
-        router.push(nextPath);
+        router.push(safeNext);
         router.refresh();
       } else {
         setMessage("Check your email to confirm your account, then return to sign in.");

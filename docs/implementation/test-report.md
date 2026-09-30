@@ -10,7 +10,7 @@ This report is updated from executed commands; unavailable checks are never reco
 | ESLint | Passed | `./node_modules/.bin/eslint .` |
 | Unit tests | Passed | Vitest: 2 files, 13 deterministic contract/revision/consent tests |
 | Next.js production build | Passed | Next.js 16.3.3 Webpack production build; 15 static/dynamic routes emitted plus 11 Workflow steps |
-| Browser journeys | Latest source passed locally; hosted rerun pending final deploy | In-app Chromium passed J01–J06 and source evidence navigation; all five references plus login had 0px overflow at 1440/390/320 with no console warning/error |
+| Browser journeys | Latest source passed locally; hosted HTTP passed; hosted interactive session blocked by Vercel SSO login | In-app Chromium passed J01–J06 and source evidence navigation locally; all five references plus login had 0px overflow at 1440/390/320 with no console warning/error |
 | Packaged Playwright runner | Environment-blocked | All 9 tests are discovered, but the Playwright Chromium download returns CDN HTTP 403 (`service is not available in your location`); no browser executable exists on the host |
 | API contracts | Passed locally | `/api/health` returns only `{status:"ok"}`; unauthenticated private endpoints return 401; no environment inventory or fake session ID is exposed |
 | Supabase migrations | Passed | Nine ordered migrations registered; 24 Numa tables report RLS enabled; both transcript/audio triggers enabled |
@@ -35,6 +35,8 @@ The 2026-09-30 local rerun used the current source in the in-app Chromium browse
 - Source grounding: a citation opened physical PDF page 4 and the return path preserved the listening route.
 
 The hosted rerun repeated J01–J06, the future-only chapter update, explicit memory consent, baseline review, comparison relationships, and physical-page source navigation against a Vercel deployment reported as `READY` with target `preview`. The hosted browser produced no console errors. The canonical Preview is protected by the owner's Vercel SSO policy; authenticated browser access and `vercel curl` both succeeded.
+
+For the current infrastructure commit, Vercel reported the new deployment `READY` and its Git metadata matched the branch head. Authenticated `vercel curl` returned 200 for `/api/health`, `/new`, `/listen`, `/explain/feedback`, `/compare`, `/topics/spaced-practice/changes`, and `/login`; `/workspace` returned the expected unauthenticated 307 redirect. The health body was minimal and all six HTML responses contained their expected page markers. Runtime error logs were empty. A fresh graphical hosted session stopped at Vercel→GitHub login, and a standalone Chromium download returned regional CDN HTTP 403. Deployment Protection was not disabled or bypassed in a browser, so the five checked-in reference screenshots are prior Preview captures of the unchanged sample routes, not falsely labeled current hosted recaptures.
 
 ## Deployment safety
 
