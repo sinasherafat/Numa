@@ -16,8 +16,8 @@ This report is updated from executed commands; unavailable checks are never reco
 | Supabase migrations | Passed | Nine ordered migrations registered; 24 Numa tables report RLS enabled; both transcript/audio triggers enabled |
 | Ownership isolation | Passed | Transactional two-user check: own visible 1, other visible 0, cross-owner updates 0; transaction rolled back |
 | Database advisors | Passed | Supabase security and performance advisors returned no findings after migrations |
-| Workflow credential gate | Passed | Wrong secret returns PostgreSQL 42501 `Invalid workflow credential` |
-| AI provider smoke | Blocked | Vercel AI Gateway returned HTTP 403 requiring a valid credit card; no purchase/fallback attempted |
+| Workflow credential gate | Repaired and RPC-verified | The current Preview `NUMA_WORKFLOW_SECRET` initially returned 401 / PostgreSQL 42501 `Invalid workflow credential`. The Preview database digest was updated to match that existing secret without exposing it. Repeating a non-mutating claim for a nonexistent UUID passed the credential check and reached the expected PostgreSQL `P0002 Job not found`. No actual source-ingest run exists yet; the jobs table was empty. |
+| AI provider smoke | Blocked by Vercel account billing | Real, minimal server-side AI SDK calls for text (`openai/gpt-5.4-nano`), STT (`openai/whisper-1`, 0.01-second silent WAV), and TTS (`openai/tts-1`, one-word input), using the existing Vercel OIDC credential, each returned the same HTTP 403: `AI Gateway requires a valid credit card on file to service requests`. This is an account-level billing gate, not an expired/missing Gateway token. The configured model IDs were present in Vercel's live model catalog. No `OPENAI_API_KEY` or `AI_GATEWAY_API_KEY` exists in the Preview environment; no direct OpenAI credential or OpenAI tool integration is available in this Codex session. No provider operation ran, no purchase occurred, and no fixture fallback was attempted. |
 
 ## Browser review checklist
 
@@ -44,4 +44,4 @@ The first Git-triggered deployment of this newly created project was incorrectly
 
 ## Live provider boundary
 
-The live path uses real Supabase Auth/Postgres, private Blob, and Vercel Workflow. Grounded text, STT, and TTS use real Gateway SDK calls with timeouts and bounded retries. Because the provider currently requires a valid credit card, those calls are recorded as blocked and no sample content is substituted. The final hosted-browser section and screenshot paths are updated only after the latest commit reaches a READY Preview.
+The live path uses real Supabase Auth/Postgres, private Blob, and Vercel Workflow. Grounded text, STT, and TTS use real Gateway SDK calls with timeouts and bounded retries. The exact text-generation response currently blocks at Vercel account billing before provider execution. STT and TTS have not been reported as successful or provider-executed; no sample content is substituted into live routes. A Preview Workflow credential mismatch was corrected by synchronizing the stored digest with the already-configured Preview secret; the same RPC now passes secret validation. A complete PDF→podcast Workflow run still requires the AI account gate to be cleared. The final hosted-browser section and screenshot paths are updated only after the latest commit reaches a READY Preview.

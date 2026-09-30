@@ -5,7 +5,7 @@ Production is intentionally not deployed or connected to Preview data by this br
 ## Before merge
 
 1. Keep PR #1 Draft while the AI Gateway provider check is blocked.
-2. Verify Preview-only Supabase, Blob, Workflow secret, public Supabase identifiers, and model selectors.
+2. Verify Preview-only Supabase, Blob, Workflow secret, public Supabase identifiers, and model selectors. The Supabase `numa.runtime_secrets` row stores only the SHA-256 digest of `NUMA_WORKFLOW_SECRET`; if the Preview secret is rotated, update that digest in the Preview database through an approved secure operator path and verify a non-mutating RPC before starting a Workflow. Never print, commit, or paste the plaintext secret or its environment file.
 3. Require typecheck, lint, unit tests, production build, hosted browser journeys, and matching Git/Vercel SHAs.
 
 ## After the human-approved merge
