@@ -225,7 +225,7 @@ function NewSession({ state, setState }: { state: AppState; setState: React.Disp
     <div className="grid two session-grid">
       <section className="card">
         <h2>Your sources</h2>
-        <label className="upload-zone"><input type="file" accept="application/pdf" onChange={() => setFileReady(true)}/><Upload size={26}/><strong>Drop a PDF or choose a file</strong><span>Text-based PDF · up to 20 MB</span><em>Demo uploads stay in your browser and are not processed.</em></label>
+        <label className="upload-zone"><input type="file" accept="application/pdf" onChange={() => setFileReady(true)}/><Upload size={26}/><strong>Drop a PDF or choose a file</strong><span>Text-based PDF · live processing limit 4 MiB</span><em>Demo uploads stay in your browser and are not processed.</em></label>
         {fileReady && <div className="source-file"><FileText size={24}/><div><strong>Learning intervals.pdf</strong><span>12 pages · Demo source</span></div><span className="ready"><CheckCircle2 size={15}/> Ready</span><MoreHorizontal size={18}/></div>}
         <div className="divider"/>
         <h2>Make it yours</h2>

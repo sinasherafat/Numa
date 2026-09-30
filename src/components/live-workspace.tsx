@@ -29,7 +29,7 @@ const features = [
 function statusLabel(job: LiveState["jobs"][number]) {
   if (job.state === "failed" && job.error_code === "AI_PROVIDER_NOT_CONFIGURED") return "Source secured; Preview AI provider needs its server-side credentials";
   if (job.state === "failed" && job.error_code === "AI_DAILY_LIMIT_REACHED") return "Source secured; Preview free AI allowance reached for today";
-  if (job.state === "failed" && job.error_code === "SOURCE_LIMIT_EXCEEDED") return "PDF exceeds the 4 MB Preview limit";
+  if (job.state === "failed" && job.error_code === "SOURCE_LIMIT_EXCEEDED") return "PDF exceeds the 4 MiB Preview limit";
   if (job.state === "failed" && job.error_code === "SOURCE_PAGE_LIMIT") return "PDF exceeds the 20 page Preview limit";
   if (job.state === "failed" && job.error_code === "SOURCE_TEXT_LIMIT_EXCEEDED") return "Extracted text exceeds the 20,000 character Preview limit";
   if (job.state === "failed" && job.error_code === "PREVIEW_DURATION_LIMIT") return "Preview lessons are limited to 5 minutes";
@@ -90,7 +90,7 @@ export function LiveWorkspace() {
     const form = event.currentTarget;
     const file = new FormData(form).get("pdf");
     if (!(file instanceof File)) return;
-    if (file.size > PREVIEW_LIMITS.pdfBytes) return setError("Preview PDFs must be 4 MB or smaller.");
+    if (file.size > PREVIEW_LIMITS.pdfBytes) return setError("Preview PDFs must be 4 MiB or smaller.");
     const signature = new TextDecoder().decode(new Uint8Array(await file.slice(0, 5).arrayBuffer()));
     if (signature !== "%PDF-") return setError("This file does not have a valid PDF signature.");
     setBusy(true); setError(""); setProgress(0);
@@ -204,7 +204,7 @@ export function LiveWorkspace() {
               <div className="goal-row">{(["understand", "presentation", "compare"] as const).map((item) => <button className={`goal-pill ${goal === item ? "active" : ""}`} type="button" key={item} onClick={() => setGoal(item)}>{item}</button>)}</div>
               <label htmlFor="live-question">Your question</label><input id="live-question" className="input" value={question} onChange={(event) => setQuestion(event.target.value)} required minLength={3}/>
               <div className="live-fields"><label>Familiarity<select className="select" value={level} onChange={(event) => setLevel(event.target.value as typeof level)}><option value="beginner">Beginner</option><option value="familiar">Familiar</option><option value="advanced">Advanced</option></select></label><label>Preview lesson duration<input className="input" value="Up to 5 min" readOnly aria-label="Preview lesson duration"/></label></div>
-              <label className="dropzone"><FileText size={24}/><strong>{busy ? `Uploading ${progress}%` : "Choose a text-based PDF"}</strong><span>Private · up to 4 MB and 20 pages · 20,000 extracted characters max</span><input name="pdf" type="file" accept="application/pdf,.pdf" required disabled={busy}/></label>
+              <label className="dropzone"><FileText size={24}/><strong>{busy ? `Uploading ${progress}%` : "Choose a text-based PDF"}</strong><span>Private · up to 4 MiB and 20 pages · 20,000 extracted characters max</span><input name="pdf" type="file" accept="application/pdf,.pdf" required disabled={busy}/></label>
               <label className="fine provider-consent"><input type="checkbox" name="ai-processing-notice" required/> I understand extracted source text is sent to Cloudflare Workers AI for inference. Cloudflare states that Workers AI content is not used to train or improve services. I will not upload content I lack permission to process.</label>
               <button className="button primary" disabled={busy}>{busy ? "Securing source…" : "Upload and create lesson"}</button>
             </form>
