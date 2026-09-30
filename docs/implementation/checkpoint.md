@@ -6,8 +6,9 @@ Updated 2026-10-01 on the existing `codex/numa-v1` branch.
 
 - Existing PR #1: <https://github.com/sinasherafat/Numa/pull/1>, open and Draft; no duplicate PR created.
 - At inspection, local `HEAD` and the cached `origin/codex/numa-v1` ref were `00b82ab51e451389761435a9c10729d1e7ca8934`. GitHub PR API independently reported the same head SHA and base `main` at `f8126eca9896bbe7d54349e25ccbd1390d6fc48b`.
-- No changes were committed or pushed during this checkpoint. The Cloudflare provider refactor and documentation changes remain in the working tree.
-- GitHub's `gh` CLI could not reach `api.github.com`; the GitHub connector can read PR #1. Vercel's deployment-list API returned 403 permission denied and the local Vercel CLI is unavailable, so current Vercel status/SHA could not be refreshed. The last recorded Preview is `https://numa-smo4lz6tg-sinas-projects-111632f8.vercel.app`, deployment `dpl_AHo9RgrCQiK3W5AnYjfkiwpxvBSP`, READY at the prior SHA `00b82ab51e451389761435a9c10729d1e7ca8934`.
+- Commit `b7084893b14ac2b91297b1195e01c4399b961505` was committed and pushed to the existing feature branch. The remote branch and PR API both report this exact SHA. PR #1's description was updated through the authenticated GitHub CLI; it remains open and Draft.
+- GitHub's Vercel check attached to SHA `b7084893b14ac2b91297b1195e01c4399b961505` reached **success**. Vercel's PR bot identifies the matching Preview as `https://numa-git-codex-numa-v1-sinas-projects-111632f8.vercel.app`, **Ready**, dashboard deployment `GKvK66u33xQgqoBku6WZb5Ys8CqZ`. Direct Vercel API reads were denied (403/404), so the deployment's internal `gitSource.sha` could not be independently fetched. The GitHub status is associated with the stated source commit.
+- Hosted browser access redirected to Vercel login/SSO. No access-control bypass or share URL was used. The previously checked-in five screenshots remain captures from the earlier Preview/sample routes, not recaptures of this commit.
 
 ## Infrastructure evidence from the prior checkpoint
 
@@ -31,7 +32,7 @@ Updated 2026-10-01 on the existing `codex/numa-v1` branch.
 - `./node_modules/.bin/vitest run`: 3 files / 19 tests passed; the six AI adapter tests use deterministic mocked responses only.
 - `./node_modules/.bin/next build --webpack`: passed; existing `unpdf` `import.meta` warning remains.
 - `pnpm` wrapper commands attempted an automatic modules-directory sync, but npm registry access failed and non-interactive purge was refused. The installed local binaries above were used; no dependency directory was removed.
-- The current working tree has not been pushed/deployed. Earlier hosted route/browser evidence and five screenshots describe the previous deployed sample routes, not the current code.
+- The current commit is pushed and has a Vercel Ready check. App-level hosted-browser interactions and fresh screenshots remain blocked by Vercel SSO login. The real provider path remains untested.
 
 ## Remaining gates
 

@@ -15,7 +15,7 @@ These commands ran against the current working tree after the Cloudflare adapter
 | Unit tests | Passed | Vitest: 3 files, 19 tests. Six `provider.test.ts` tests mock HTTP and do not prove provider availability. |
 | Next.js production build | Passed with warning | `./node_modules/.bin/next build --webpack`; all 11 Workflow steps built. Existing `unpdf` `import.meta` critical-dependency warning remains. |
 | Real provider smoke | Not run | Cloudflare account ID/token are not available to this task. No AI success is claimed. |
-| Hosted Preview for current working tree | Not deployed | Current adapter/docs changes are uncommitted and do not match the earlier Preview SHA. |
+| Hosted Preview for current working tree | Vercel check passed; browser interaction blocked | GitHub reports the Vercel check for current SHA `b7084893b14ac2b91297b1195e01c4399b961505` as success, and Vercel's PR bot reports Ready at `https://numa-git-codex-numa-v1-sinas-projects-111632f8.vercel.app`. Opening the Preview redirected to Vercel login/SSO, so no current hosted app flows or screenshots were verified. |
 
 | Check | Result | Evidence |
 | --- | --- | --- |
