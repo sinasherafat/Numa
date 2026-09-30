@@ -25,6 +25,9 @@ export type ApiErrorCode =
   | "REVISION_CONFLICT"
   | "CONSENT_REQUIRED"
   | "QUOTA_EXCEEDED"
+  | "AI_CREDITS_REQUIRED"
+  | "AI_RATE_LIMIT"
+  | "AI_PROVIDER_FAILED"
   | "PROVIDER_UNAVAILABLE"
   | "TRANSCRIPT_REQUIRED"
   | "BASELINE_UNAVAILABLE"
@@ -64,12 +67,3 @@ export function isPublicHttpUrl(value: string) {
     return false;
   }
 }
-
-export const providers = {
-  database: Boolean(process.env.DATABASE_URL),
-  storage: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
-  generation: Boolean(process.env.OPENAI_API_KEY || process.env.AI_GATEWAY_API_KEY),
-  auth: Boolean(process.env.AUTH_SECRET),
-};
-
-export const livePrivatePathReady = Object.values(providers).every(Boolean);

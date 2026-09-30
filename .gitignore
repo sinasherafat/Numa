@@ -14,3 +14,5 @@ test-results/
 artifacts/screenshots/*-before.png
 .vercel
 .env*
+!.env.example
+/.swc

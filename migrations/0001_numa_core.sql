@@ -4,15 +4,35 @@
 create extension if not exists pgcrypto;
 create schema if not exists numa;
 revoke all on schema numa from public;
+grant usage on schema numa to authenticated, service_role;
 
 create table numa.users (
-  id uuid primary key default gen_random_uuid(),
+  id uuid primary key references auth.users(id) on delete cascade,
   external_subject text not null unique,
   email text,
   locale text not null default 'en',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create or replace function numa.handle_auth_user_created()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into numa.users (id, external_subject, email)
+  values (new.id, new.id::text, new.email)
+  on conflict (id) do update set email = excluded.email, updated_at = now();
+  return new;
+end;
+$$;
+revoke all on function numa.handle_auth_user_created() from public, anon, authenticated;
+
+create trigger numa_auth_user_created
+after insert or update of email on auth.users
+for each row execute function numa.handle_auth_user_created();
 
 create table numa.consents (
   id uuid primary key default gen_random_uuid(),
@@ -113,6 +133,7 @@ create index sessions_topic_id_idx on numa.sessions(topic_id);
 
 create table numa.session_revisions (
   id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references numa.users(id) on delete cascade,
   session_id uuid not null references numa.sessions(id) on delete cascade,
   parent_revision_id uuid references numa.session_revisions(id) on delete restrict,
   sequence integer not null check (sequence > 0),
@@ -129,6 +150,7 @@ alter table numa.sessions add constraint sessions_active_revision_id_fkey foreig
 
 create table numa.chapters (
   id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references numa.users(id) on delete cascade,
   created_in_revision_id uuid not null references numa.session_revisions(id) on delete restrict,
   objective text not null,
   script jsonb not null,
@@ -140,6 +162,7 @@ create table numa.chapters (
 create index chapters_revision_id_idx on numa.chapters(created_in_revision_id);
 
 create table numa.revision_chapters (
+  owner_id uuid not null references numa.users(id) on delete cascade,
   revision_id uuid not null references numa.session_revisions(id) on delete cascade,
   chapter_id uuid not null references numa.chapters(id) on delete restrict,
   position integer not null check (position >= 0),
@@ -150,6 +173,7 @@ create index revision_chapters_chapter_id_idx on numa.revision_chapters(chapter_
 
 create table numa.transcript_spans (
   id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references numa.users(id) on delete cascade,
   chapter_id uuid not null references numa.chapters(id) on delete cascade,
   speaker text not null check (speaker in ('host_a', 'host_b')),
   text text not null,
@@ -333,3 +357,83 @@ create index jobs_runnable_idx on numa.jobs(available_at, created_at) where stat
 
 comment on table numa.jobs is 'Workers must atomically claim runnable rows with FOR UPDATE SKIP LOCKED or use an equivalent durable Vercel Workflow ledger.';
 comment on schema numa is 'Private Numa application data. Grant only explicit table privileges to a non-superuser application role.';
+
+-- Supabase Auth owns application identities. Backfill is safe for a fresh Preview
+-- project and makes this migration resumable if an account was created first.
+insert into numa.users (id, external_subject, email)
+select id, id::text, email from auth.users
+on conflict (id) do update set email = excluded.email, updated_at = now();
+
+create index session_revisions_owner_id_idx on numa.session_revisions(owner_id);
+create index chapters_owner_id_idx on numa.chapters(owner_id);
+create index revision_chapters_owner_id_idx on numa.revision_chapters(owner_id);
+create index transcript_spans_owner_id_idx on numa.transcript_spans(owner_id);
+
+-- The custom schema is exposed deliberately. Grants decide which operations are
+-- callable; RLS then restricts every operation to auth.uid().
+alter role authenticator set pgrst.db_schemas = 'public, graphql_public, numa';
+notify pgrst, 'reload config';
+
+grant select, update on table numa.users to authenticated;
+alter table numa.users enable row level security;
+create policy users_select_own on numa.users for select to authenticated
+  using ((select auth.uid()) = id);
+create policy users_update_own on numa.users for update to authenticated
+  using ((select auth.uid()) = id)
+  with check ((select auth.uid()) = id);
+
+do $$
+declare
+  item record;
+begin
+  for item in
+    select * from (values
+      ('consents', 'user_id'),
+      ('sources', 'owner_id'),
+      ('source_versions', 'owner_id'),
+      ('source_chunks', 'owner_id'),
+      ('topics', 'owner_id'),
+      ('source_snapshots', 'owner_id'),
+      ('sessions', 'owner_id'),
+      ('session_revisions', 'owner_id'),
+      ('chapters', 'owner_id'),
+      ('revision_chapters', 'owner_id'),
+      ('transcript_spans', 'owner_id'),
+      ('playback_cursors', 'user_id'),
+      ('interactions', 'owner_id'),
+      ('adaptations', 'owner_id'),
+      ('concepts', 'owner_id'),
+      ('concept_evidence', 'owner_id'),
+      ('teachbacks', 'owner_id'),
+      ('assessments', 'owner_id'),
+      ('review_checkpoints', 'owner_id'),
+      ('change_sets', 'owner_id'),
+      ('outcomes', 'owner_id'),
+      ('jobs', 'owner_id')
+    ) as owned(table_name, owner_column)
+  loop
+    execute format('alter table numa.%I enable row level security', item.table_name);
+    execute format('revoke all on table numa.%I from anon, authenticated', item.table_name);
+    execute format('grant select, insert, update, delete on table numa.%I to authenticated', item.table_name);
+    execute format(
+      'create policy %I on numa.%I for select to authenticated using ((select auth.uid()) = %I)',
+      item.table_name || '_select_own', item.table_name, item.owner_column
+    );
+    execute format(
+      'create policy %I on numa.%I for insert to authenticated with check ((select auth.uid()) = %I)',
+      item.table_name || '_insert_own', item.table_name, item.owner_column
+    );
+    execute format(
+      'create policy %I on numa.%I for update to authenticated using ((select auth.uid()) = %I) with check ((select auth.uid()) = %I)',
+      item.table_name || '_update_own', item.table_name, item.owner_column, item.owner_column
+    );
+    execute format(
+      'create policy %I on numa.%I for delete to authenticated using ((select auth.uid()) = %I)',
+      item.table_name || '_delete_own', item.table_name, item.owner_column
+    );
+  end loop;
+end;
+$$;
+
+alter default privileges for role postgres in schema numa revoke all on tables from anon;
+alter default privileges for role postgres in schema numa grant select, insert, update, delete on tables to authenticated;

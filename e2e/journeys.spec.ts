@@ -73,12 +73,11 @@ test("320px layout has no horizontal overflow", async ({ page }) => {
   }
 });
 
-test("health endpoint distinguishes demo from private live providers", async ({ request }) => {
+test("health endpoint stays minimal", async ({ request }) => {
   const response = await request.get("/api/health");
   expect(response.ok()).toBeTruthy();
   const body = await response.json();
-  expect(body.data.mode).toBe("demo");
-  expect(body.data.sampleWorkspace).toBe(true);
+  expect(body.data).toEqual({ status: "ok" });
 });
 
 test("private source import fails truthfully when providers are unavailable", async ({ request }) => {
@@ -86,7 +85,7 @@ test("private source import fails truthfully when providers are unavailable", as
     headers: { "Idempotency-Key": "e2e-public-source-1" },
     data: { public_pdf_url: "https://example.org/paper.pdf" },
   });
-  expect(response.status()).toBe(503);
+  expect(response.status()).toBe(401);
   const body = await response.json();
-  expect(body.error.code).toBe("PROVIDER_UNAVAILABLE");
+  expect(body.error.code).toBe("AUTH_REQUIRED");
 });

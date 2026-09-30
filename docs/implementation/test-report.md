@@ -9,14 +9,21 @@ This report is updated from executed commands; unavailable checks are never reco
 | TypeScript strict typecheck | Passed | `./node_modules/.bin/tsc --noEmit` |
 | ESLint | Passed | `./node_modules/.bin/eslint .` |
 | Unit tests | Passed | Vitest: 2 files, 13 deterministic contract/revision/consent tests |
-| Next.js production build | Passed | Next.js 16.3.3 optimized build; UI and API routes emitted |
-| Browser journeys | Passed locally and on the hosted Vercel Preview | J01–J06, source evidence navigation, 1440/390/320 layouts, no console errors or framework overlays |
+| Next.js production build | Passed | Next.js 16.3.3 Webpack production build; 15 static/dynamic routes emitted plus 11 Workflow steps |
+| Browser journeys | Latest source passed locally; hosted rerun pending final deploy | In-app Chromium passed J01–J06 and source evidence navigation; all five references plus login had 0px overflow at 1440/390/320 with no console warning/error |
 | Packaged Playwright runner | Environment-blocked | All 9 tests are discovered, but the Playwright Chromium download returns CDN HTTP 403 (`service is not available in your location`); no browser executable exists on the host |
-| API contracts | Passed | `/api/health` → 200 demo/provider state; private import → truthful 503; missing idempotency → 400 |
+| API contracts | Passed locally | `/api/health` returns only `{status:"ok"}`; unauthenticated private endpoints return 401; no environment inventory or fake session ID is exposed |
+| Supabase migrations | Passed | Nine ordered migrations registered; 24 Numa tables report RLS enabled; both transcript/audio triggers enabled |
+| Ownership isolation | Passed | Transactional two-user check: own visible 1, other visible 0, cross-owner updates 0; transaction rolled back |
+| Database advisors | Passed | Supabase security and performance advisors returned no findings after migrations |
+| Workflow credential gate | Passed | Wrong secret returns PostgreSQL 42501 `Invalid workflow credential` |
+| AI provider smoke | Blocked | Vercel AI Gateway returned HTTP 403 requiring a valid credit card; no purchase/fallback attempted |
 
 ## Browser review checklist
 
 The five visual-reference routes are `/new`, `/listen`, `/explain/feedback`, `/compare`, and `/topics/spaced-practice/changes`. Each was captured at 1440px in `artifacts/screenshots/`. The listening screen was also captured at 390px and the new-session screen at 320px. Browser checks found and fixed one 9px overflow caused by the invisible file input; the rerun reported zero overflow. No second sidebar, hidden primary action, unreadable source evidence, console error, framework overlay, or autoplay was observed.
+
+The 2026-09-30 local rerun used the current source in the in-app Chromium browser. `/workspace` redirected an unauthenticated user to `/login`; the five reference routes and `/login` each reported zero horizontal overflow at 1440, 390, and 320 pixels. J01/J06, J02 future-only update, J03 edited text plus explicit memory consent, J04 relationship states, J05 explicit baseline update/restore, and physical-page navigation all passed with no captured console warnings or errors.
 
 ## Executed browser evidence
 
@@ -35,4 +42,4 @@ The first Git-triggered deployment of this newly created project was incorrectly
 
 ## Live provider boundary
 
-`/api/health` reports individual provider presence without values. `/api/sessions` and `/api/sources/import-url` require idempotency and respond with `PROVIDER_UNAVAILABLE` while private infrastructure is absent. These failures are expected and are not counted as passed real-product operations.
+The live path uses real Supabase Auth/Postgres, private Blob, and Vercel Workflow. Grounded text, STT, and TTS use real Gateway SDK calls with timeouts and bounded retries. Because the provider currently requires a valid credit card, those calls are recorded as blocked and no sample content is substituted. The final hosted-browser section and screenshot paths are updated only after the latest commit reaches a READY Preview.

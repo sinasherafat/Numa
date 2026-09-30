@@ -4,11 +4,11 @@
   "private": true,
   "packageManager": "pnpm@11.19.0",
   "engines": {
-    "node": ">=20.9"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -17,10 +17,17 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@ai-sdk/gateway": "4.0.75",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.116.0",
+    "@vercel/blob": "2.8.0",
+    "ai": "7.0.93",
     "lucide-react": "^0.542.0",
     "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "unpdf": "1.8.1",
+    "workflow": "4.8.5",
     "zod": "^4.1.5"
   },
   "devDependencies": {

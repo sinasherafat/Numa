@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for the review branch on 2026-09-07. Real provider activation remains blocked by missing Preview resources and credentials.
+Accepted for the review branch on 2026-09-07; amended 2026-09-30 after Preview infrastructure activation. AI Gateway execution remains account-blocked.
 
 ## Decision
 
@@ -15,19 +15,19 @@ The frontend has two explicit modes:
 1. `sample workspace` uses deterministic, non-private fixtures. Browser storage preserves only demo interactions and is labeled as such. It supplies coherent interactions and a generated two-host sample audio file for visual and usability review.
 2. `private source path` requires authenticated ownership, a relational store, private object storage, durable orchestration, and generation/STT/TTS adapters. Missing providers produce structured `PROVIDER_UNAVAILABLE` errors; they never fall back to fixture success.
 
-The service boundary in `src/lib/services.ts` defines durable jobs, private object storage, and replaceable generation adapters. Jobs use stable input versions and idempotency keys. The target runtime is Vercel Workflow because the product requires checkpoints, bounded retry, cancellation, and crash-safe execution. It must be connected to an isolated Preview database and storage namespace before private source acceptance checks are claimable.
+The live path uses Supabase Auth/Postgres, private Vercel Blob, Vercel Workflow, and Vercel AI Gateway. Jobs use stable input versions, content hashes, exclusive claims, branch-scoped secrets, idempotency keys, checkpoints, bounded retries, cancellation states, and persisted results. Workflow stores extracted physical pages, a source snapshot, an immutable session revision, a private audio object, timed transcript spans, and editable outcomes transactionally through narrow secret-authenticated RPCs.
 
 Session revisions and chapter assets are immutable. `src/lib/revision.ts` preserves all traversed and current chapters when accepting an adaptation, checks the expected revision and cursor version, and rejects stale concurrent acceptance. Cross-session evidence is filtered out when consent is off and rejected or forgotten evidence is excluded immediately.
 
 ## Security and privacy
 
-- All future data access must be scoped by server-side owner identity, returning a non-disclosing 404 for cross-owner identifiers.
+- All application data access is scoped by a verified Supabase subject and ownership RLS, returning a non-disclosing 404 for cross-owner identifiers.
 - Upload completion must validate file signature, size, page count, and content hash server-side.
 - URL import accepts only public HTTP(S) destinations and must re-check DNS and every redirect in the worker before fetching.
 - Raw source text, voice, and evidence must not enter general analytics or error logs.
-- Signed object URLs are short lived. Source deletion invalidates derived citations, memory evidence, baselines, outcomes, and late-running jobs.
+- Original PDFs, generated audio, and raw recordings use private Blob objects. Authenticated application endpoints stream owned audio; no permanent public artifact URL is emitted. Source deletion cancels eligible jobs and removes dependent records and objects.
 - Consent for learning memory and raw-audio retention are separate versioned records.
 
 ## Consequences
 
-The Preview is useful for product and visual review without pretending that unavailable private infrastructure exists. The PR must stay Draft until database, storage, auth, Workflow, and model/STT/TTS adapters are configured and E01/E14–E19 are re-run against the hosted private path. No Production migration or deployment is part of this decision.
+Database, Auth, Blob, Workflow, generation, STT, and TTS adapters are configured in Preview. Database/RLS and build checks pass, but Gateway calls return `403` with the provider requirement for a valid credit card. The PR stays Draft until real generation/STT/TTS and the dependent hosted F01/F03/F04/F05/F06 journeys pass. Sample success is never substituted. Production migration/deployment remains a post-merge manual gate.

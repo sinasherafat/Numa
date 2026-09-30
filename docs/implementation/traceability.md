@@ -6,12 +6,12 @@ Status vocabulary: **implemented** means code or UI exists; **verified** means a
 
 | ID | Requirement | Implementation | Verification | Blocked live portion |
 | --- | --- | --- | --- | --- |
-| F01 | A contextual question can change only future unplayed chapters after acceptance; reject and failure preserve the original path | `/listen`, ask panel, revision/cursor checks in `src/lib/revision.ts` | Unit tests cover immutable prefix and stale cursor; browser journey covers answer and accepted update | Durable generation and atomic database activation need Preview Workflow/database/providers |
-| F02 | Separate exposure, self-report, explain-back, gaps and not-assessed; explicit cross-session consent; inspect/edit/forget | `/understanding`, `/settings`, feedback memory panel, `personalizationEvidence` | Unit tests cover consent-off, rejected and forgotten evidence; browser journey covers explicit toggle | Cross-session private persistence and physical deletion need auth/database/worker |
-| F03 | Voice or text explanation, editable transcript, grounded feedback, Cannot assess, targeted review | `/explain`, `/explain/feedback`; microphone permission path and full text alternative | Browser journey covers edited transcript and feedback route | Real STT and model assessment adapters are unconfigured; visible assessment is labeled fixture |
-| F04 | Compare 2–5 sources around one question without manufacturing conflict | `/compare`, relationship labels, evidence links and comparison audio UI | Browser journey checks agreement, different conditions and unknowns | Real claim extraction/retrieval and comparison generation need private source pipeline |
-| F05 | Compare new sources with an explicit reviewed baseline; preserve dates and no automatic baseline movement | `/topics/spaced-practice/changes`; distinct publication/add/review dates | Browser journey checks explicit mark reviewed and restoring prior baseline | Content hashes, snapshots and durable ChangeSet generation need database/storage/workflow |
-| F06 | Goal changes path, practice and editable outputs | `/new`, `/plan`, `/outcome`; presentation outline, notes, flashcards, comparison, Markdown export | Browser journey covers goal-shaped session flow | Real generated outcomes and server-side export need source/generation providers |
+| F01 | A contextual question can change only future unplayed chapters after acceptance; reject and failure preserve the original path | Sample `/listen`; immutable revision algorithm; live private PDF→Workflow→audio/transcript/player infrastructure | Unit tests cover immutable prefix and stale cursor; sample browser journey covers accepted update | Live adaptation generation/acceptance remains blocked by Gateway 403 and is not presented as working |
+| F02 | Separate exposure, self-report, explain-back, gaps and not-assessed; explicit cross-session consent; inspect/edit/forget | Sample `/understanding`; live owner-scoped evidence schema/state API and versioned learning-memory consent | Consent unit tests; live two-user RLS test; consent API/build verified | Live AI-created assessment evidence and complete edit/forget browser journey depend on Gateway output |
+| F03 | Voice or text explanation, editable transcript, grounded feedback, Cannot assess, targeted review | Sample `/explain`; live MediaRecorder, private raw-audio policy, real Gateway STT adapter, editable transcript, persisted confirmed text | Type/build checks; honest typed persistence path implemented | STT and grounded assessment smoke blocked by Gateway 403; UI keeps text fallback and labels assessment blocked |
+| F04 | Compare 2–5 sources around one question without manufacturing conflict | Sample `/compare`; live schema supports 1–5 version snapshots and comparison jobs/outcomes | Sample browser journey checks agreement, different conditions and unknowns | Actual uploaded-source claim comparison is blocked by Gateway and not shown as live success |
+| F05 | Compare new sources with an explicit reviewed baseline; preserve dates and no automatic baseline movement | Sample changes route; live content hashes, source versions, review checkpoints and change-set schema | Duplicate hashes/idempotency constrained; sample browser explicit-baseline journey | Live change-set generation and hosted confirmation remain blocked by Gateway output |
+| F06 | Goal changes path, practice and editable outputs | Sample goal journey; live goal/level/duration feed Workflow; persisted notes, flashcards, slide outline, audio, Markdown download | Schema, Workflow compiler and production build verified | Real generated outcomes cannot be smoke-tested until Gateway access succeeds |
 
 ## Preserved base capabilities
 
@@ -24,12 +24,12 @@ Status vocabulary: **implemented** means code or UI exists; **verified** means a
 | B05 | Two sources in comparison and session fixture | Implemented |
 | B06 | Audience-shaped seminar example labeled `Example` | Implemented |
 | B07 | Explain-back feedback and targeted review action | Implemented |
-| B08 | Selected-page metadata in plan and source reader | Implemented in fixture; real validation blocked |
+| B08 | Selected-page metadata in plan and source reader | Fixture implemented; live physical-page extraction and transcript citation persistence implemented, generation smoke blocked |
 | B09 | Editable notes, flashcards and textual slide outline | Implemented |
-| B10 | Library, listening queue, browser-persisted demo cursor state and complete-revision WAV download | Implemented; private persistence blocked |
+| B10 | Library, listening queue, browser-persisted demo cursor state and complete-revision WAV download | Fixture implemented; live sessions/jobs/audio/outcomes persist and audio streams only through an authenticated owner check |
 | B11 | Explain this action and clearer future chapter proposal | Implemented |
 | B12 | I know this creates only a self-report presentation state | Implemented; unit model keeps evidence types separate |
-| B13 | Finding, limitation, interpretation, example and unknown labels/copy | Implemented in fixture; live grounding blocked |
+| B13 | Finding, limitation, interpretation, example and unknown labels/copy | Implemented in fixture; live structured grounded plan schema exists, provider smoke blocked |
 
 ## Screen and state coverage
 
@@ -51,7 +51,7 @@ Status vocabulary: **implemented** means code or UI exists; **verified** means a
 | S14 Library | `/library` sessions, queue and download context |
 | S15 Settings | `/settings` memory, raw recording, download and deletion controls |
 
-All data-bearing routes render Ready fixture content. Loading, empty, error and disabled contracts are represented through shared `.notice`, disabled controls, API errors and the truthful private-provider state; full live state transitions remain blocked with the private pipeline.
+Sample routes render explicitly labeled fixture content. `/login` and `/workspace` are separate live routes with real empty/loading/error/job/consent/private-source states; they never import fixture data. A Gateway-denied job remains a persisted failed live job with `AI_CREDITS_REQUIRED`, not a successful lesson.
 
 ## Journeys
 
@@ -72,15 +72,15 @@ All data-bearing routes render Ready fixture content. Loading, empty, error and 
 - E08 corrected transcript: local and hosted browser assessment flows submit the edited text state.
 - E09/E10 insufficient evidence and non-comparable conditions: API vocabulary and comparison fixture use explicit states; live model gate blocked.
 - E11/E12 duplicate and baseline change: UI baseline only moves on explicit action; live content hashing blocked.
-- E14/E15 provider failure and deletion during jobs: service ports require durable job ownership and cancellation; live worker blocked.
-- E16 ownership: server-side ownership is an architecture requirement; live auth/database integration blocked and not marked verified.
+- E14/E15 provider failure and deletion during jobs: durable job states, bounded retries, cancellation requests, Blob-first deletion, and honest Gateway error classification are implemented; interrupted hosted recovery still needs a successful provider run.
+- E16 ownership: all 24 application tables have RLS; transactional two-user verification returned own `1`, other `0`, cross-owner update `0`.
 - E17 malicious PDF/private URL: public URL validator unit tests block common local/private ranges; DNS/redirect rebinding must be enforced in the future worker.
-- E18 duplicate generation: `Idempotency-Key` is required by API contracts; durable ledger blocked.
+- E18 duplicate generation: upload callback uses a durable unique idempotency ledger plus content-hash deduplication and an exclusive Workflow claim.
 - E19 consent withdrawn during generation: personalization filter is immediate; durable job invalidation blocked.
 - E20 keyboard/text/mobile: text alternative is complete; browser suite checks mobile and 320px overflow.
-- E21 immutable download: fixture download points to one committed complete WAV revision; persistent revision storage blocked.
-- E22 invalid PDF: public import returns structured unsupported/provider errors and never fake success; real parser validation blocked.
+- E21 immutable download: fixture uses a committed WAV; live generated chapters are immutable Blob objects streamed by authenticated chapter ID.
+- E22 invalid PDF: browser, callback, and Workflow validate size/type/signature; Workflow also enforces 1–200 physical pages and non-empty text.
 
 ## Release gate
 
-The branch is suitable for a **Draft PR and Preview product review**. It is not ready to merge as a live private-source product until isolated Preview auth, database, Blob storage, Vercel Workflow, generation/STT/TTS credentials, migrations and provider smoke tests are supplied and the blocked checks above pass. Production remains out of scope.
+The branch remains suitable only for a **Draft PR and Preview product review**. Preview Auth, database, Blob, Workflow, migrations, ownership, and live adapters are present. It is not merge-ready as a fully live product because Vercel AI Gateway rejects text/STT/TTS execution with HTTP 403 until the account has a valid credit card; dependent live F01/F03/F04/F05/F06 acceptance checks therefore remain blocked. No Production deployment is in scope before human approval.
