@@ -216,8 +216,9 @@ export function groundDocumentMapEvidence(sourceMap: DocumentMap, sourceChunks: 
     return null;
   });
 
+  const groundedIdeas = keyIdeas.filter((idea): idea is NonNullable<typeof idea> => idea !== null);
   return {
-    map: keyIdeas.some((idea) => idea === null) ? null : { ...sourceMap, keyIdeas: keyIdeas as DocumentMap["keyIdeas"] },
+    map: groundedIdeas.length >= 3 ? { ...sourceMap, keyIdeas: groundedIdeas } : null,
     matchedIdeas,
     totalIdeas: sourceMap.keyIdeas.length,
   };

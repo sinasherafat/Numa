@@ -148,7 +148,7 @@ describe("multi-stage source-grounded podcast stream", () => {
   });
 
   it("separates a non-verbatim source quote from a provider schema failure", async () => {
-    const invalidMap = { ...map, keyIdeas: map.keyIdeas.map((idea, index) => index === 0 ? { ...idea, point: "Quantum orbital mechanics of distant galaxies", evidence: ["A quotation that does not occur in this document."] } : idea) };
+    const invalidMap = { ...map, keyIdeas: map.keyIdeas.map((idea) => ({ ...idea, point: "Quantum orbital mechanics of distant galaxies", evidence: ["A quotation that does not occur in this document."] })) };
     const generated = [chunkNotes, invalidMap];
     const generateJson = vi.fn().mockImplementation(async () => generated.shift());
     const synthesizeTurn = vi.fn();

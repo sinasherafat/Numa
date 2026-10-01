@@ -96,12 +96,25 @@ describe("podcast quality constraints", () => {
 
   it("replaces model evidence clues with exact, relevant excerpts from the source", () => {
     const source = mapFixture();
-    source.keyIdeas = [source.keyIdeas[0]];
     source.keyIdeas[0].evidence = ["delayed testing and recall patterns"];
-    const grounded = groundDocumentMapEvidence(source, ["The research compares testing intervals and delayed recall. Another unrelated sentence describes participants."]);
+    const passages = ["The research compares testing intervals and delayed recall.", "The studies used different practice schedules.", "Conditions differ across the studies.", "The source does not examine transfer."].join(" ");
+    const grounded = groundDocumentMapEvidence(source, [passages]);
     expect(grounded.map?.keyIdeas[0].evidence).toEqual(["The research compares testing intervals and delayed recall."]);
-    expect(grounded.matchedIdeas).toBe(1);
-    expect(validateDocumentMapEvidence(grounded.map!, ["The research compares testing intervals and delayed recall. Another unrelated sentence describes participants."])).toBe(true);
+    expect(grounded.matchedIdeas).toBe(4);
+    expect(validateDocumentMapEvidence(grounded.map!, [passages])).toBe(true);
+  });
+
+  it("omits unsupported extra ideas but fails if fewer than three ideas have source excerpts", () => {
+    const source = mapFixture();
+    source.keyIdeas[0].point = "Quantum orbital mechanics of distant galaxies";
+    source.keyIdeas[0].evidence = ["This unsupported clue has no source overlap"];
+    const passages = source.keyIdeas.slice(1).flatMap((idea) => idea.evidence);
+    const mostlyGrounded = groundDocumentMapEvidence(source, passages);
+    expect(mostlyGrounded.map?.keyIdeas).toHaveLength(3);
+    expect(mostlyGrounded.matchedIdeas).toBe(3);
+    source.keyIdeas[1].point = "Unrelated volcanic minerals under Europa";
+    source.keyIdeas[1].evidence = ["A second unsupported locator with no source overlap"];
+    expect(groundDocumentMapEvidence(source, passages).map).toBeNull();
   });
 
   it("rejects a long dialogue that claims unknown grounding IDs", () => {
