@@ -82,8 +82,8 @@ export function LocalPdfUpload({
       {document && <>
         <article className="source-file local-source-file" data-testid="local-upload-document">
           <FileText size={24} aria-hidden="true"/>
-          <div><strong>{document.name}</strong><span>{formatFileSize(document.size)} · {document.pageCount} {document.pageCount === 1 ? "page" : "pages"} · Real file</span></div>
-          <span className="ready"><CheckCircle2 size={15}/> {document.mode === "local-test" ? "Local test upload" : "Remote upload"}</span>
+          <div><strong>{document.name}</strong><span>{formatFileSize(document.size)} · {document.pageCount} {document.pageCount === 1 ? "page" : "pages"} · {document.text.length.toLocaleString()} characters · Real file</span></div>
+          <span className="ready"><CheckCircle2 size={15}/> {document.mode === "local-test" ? "Local test mode" : "Remote upload"}</span>
           <button className="icon-btn remove-local-upload" type="button" onClick={clearDocument} aria-label="Remove selected PDF"><Trash2 size={17}/></button>
         </article>
         {status === "ready" && <p className="upload-success" role="status"><CheckCircle2 size={16}/>{adapter.mode === "local-test" ? "PDF read successfully in this browser. No remote upload or AI processing occurred." : "PDF upload completed."}</p>}

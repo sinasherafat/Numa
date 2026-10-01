@@ -46,6 +46,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { chapters, demoSources, demoTranscript, goalCopy, navItems, routeTitles, type Goal } from "@/lib/demo-data";
 import { LocalPdfUpload } from "@/components/local-pdf-upload";
+import { PodcastGenerator } from "@/components/podcast-generator";
 import { formatFileSize, type UploadDocument } from "@/lib/uploads/local";
 
 type AppState = {
@@ -218,7 +219,7 @@ function GoalIcon({ goal }: { goal: Goal }) {
 function NewSession({ state, setState, localDocument, setLocalDocument }: { state: AppState; setState: React.Dispatch<React.SetStateAction<AppState>>; localDocument: UploadDocument | null; setLocalDocument: (document: UploadDocument | null) => void }) {
   const router = useRouter();
   return <div className="page new-page">
-    <PageHeading title="What would you like to understand?" subtitle="Start with a source. Leave with something you can explain."/>
+    <PageHeading title="Turn a paper into a conversation." subtitle="Upload a real PDF, then create a source-grounded podcast you can play."/>
     <span className="badge purple"><Sparkles size={12}/> Local test mode · starts empty</span>
     <div className="goal-grid">
       {(Object.keys(goalCopy) as Goal[]).map((goal) => <button key={goal} className={`goal-card ${state.goal === goal ? "active" : ""}`} onClick={() => setState(s => ({ ...s, goal }))}><GoalIcon goal={goal}/><div><strong>{goalCopy[goal].label}</strong><span>{goalCopy[goal].description}</span></div></button>)}
@@ -227,6 +228,7 @@ function NewSession({ state, setState, localDocument, setLocalDocument }: { stat
       <section className="card">
         <h2>Your sources</h2>
         <LocalPdfUpload document={localDocument} onDocumentChange={setLocalDocument}/>
+        {localDocument && <PodcastGenerator document={localDocument}/>}
         <div className="divider"/>
         <h2>Make it yours</h2>
         <div className="field"><label htmlFor="question">What is your {state.goal === "presentation" ? "presentation" : "learning session"} about?</label><input id="question" className="input" defaultValue="Explain how spaced practice affects recall"/></div>
@@ -235,7 +237,7 @@ function NewSession({ state, setState, localDocument, setLocalDocument }: { stat
           <div className="field"><label htmlFor="level">Your familiarity</label><select id="level" className="select" value={state.level} onChange={e => setState(s => ({...s, level: e.target.value as AppState["level"]}))}><option value="beginner">Beginner</option><option value="familiar">Familiar</option><option value="advanced">Advanced</option></select></div>
         </div>
         <div className="field"><label>Duration</label><div className="segmented">{([5,10,20] as const).map(d => <button key={d} className={`segment ${state.duration === d ? "active" : ""}`} onClick={() => setState(s => ({...s,duration:d}))}>{d} min</button>)}</div></div>
-        <p className="local-flow-note">Choose a real PDF to continue. Plan, audio, transcript, and AI stages beyond local parsing remain explicitly labeled illustrative previews. Local drafts are session-only and are not saved remotely.</p>
+        <p className="local-flow-note">The real PDF → Cloudflare script → MeloTTS audio path is available above. The separate learning plan, transcript, and other feature screens remain illustrative previews. Local source text and generated audio stay in this browser session and are not saved remotely.</p>
         <div className="row form-actions"><button className="button primary" disabled={!localDocument} onClick={() => router.push("/plan")}>Review plan <ArrowRight size={17}/></button><button className="button" onClick={() => router.push("/library")}>View sample library</button></div>
       </section>
       <div className="section-stack">

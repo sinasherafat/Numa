@@ -2,6 +2,22 @@
 
 This report is updated from executed commands; unavailable checks are never recorded as passes.
 
+## Direct PDF → podcast MVP (2026-10-01)
+
+Added a Preview-only, same-origin route which bypasses the existing Workflow, receives only the browser-extracted text after explicit consent, invokes the server-only Cloudflare LLM and MeloTTS adapter, then returns generated audio directly to an HTML audio player. There is no fixture fallback. The PDF remains local; the generated MP3 is an object URL in browser memory and is not persisted to Blob or Supabase. Request, PDF, script and audio caps are enforced. The two-attempt throttle is best-effort per server instance (not a global quota). The attached reference PDFs are no longer present under `/tmp/codex-remote-attachments`, and no PDF is stored under `docs/product/` or `docs/design/references/`; hosted acceptance with a user-selected real PDF is still pending.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| TypeScript | Passed | `./node_modules/.bin/tsc --noEmit` after build output finished generating |
+| ESLint | Passed | `./node_modules/.bin/eslint .` (no warnings/errors) |
+| Vitest | Passed | 8 files / 38 tests; includes empty upload state, parser, metadata/removal, direct provider service order/error, stream-to-player contract, no success on provider failure; provider tests are mocks |
+| Production build | Passed with existing warning | `./node_modules/.bin/next build --webpack`; direct `/api/podcast/generate` route emitted. Existing `@vercel/queue` expression dependency warning remains. |
+| `git diff --check` | Passed | Worktree diff before commit |
+| Hosted Preview / real Cloudflare provider | Pending | This worktree has not yet been pushed/deployed. No real provider call or hosted playback is claimed. |
+| Preview deployment SHA | Pending | Awaiting the existing PR branch push and Vercel build. |
+
+The `pnpm` wrapper first tried to synchronize its modules directory while the npm registry was unreachable and aborted without purging it; checks were run with the already-installed local binaries. One initial parallel TypeScript check overlapped Next's `.next/types` generation and reported missing generated types; it was rerun after the build and passed.
+
 ## Local-first real PDF upload update (2026-10-01)
 
 `/new` no longer preloads the illustrative `Learning intervals.pdf`. It starts empty and uses the replaceable `UploadAdapter` interface with `LocalUploadAdapter`; the browser reads and parses the selected PDF using the repository's existing `unpdf`/PDF.js dependency. The actual filename, byte size, page count and extracted text remain in root React state during in-app navigation. The file and its text are not sent to a server or storage provider. Plan/audio/AI stages beyond local parsing remain explicitly illustrative.

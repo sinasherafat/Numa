@@ -34,8 +34,8 @@ describe("LocalPdfUpload", () => {
     fireEvent.change(screen.getByLabelText("Choose a PDF file"), { target: { files: [file] } });
 
     expect(await screen.findByText(result.name)).toBeInTheDocument();
-    expect(screen.getByText("1.5 KB · 3 pages · Real file")).toBeInTheDocument();
-    expect(screen.getByText(/Local test upload/)).toBeInTheDocument();
+    expect(screen.getByText("1.5 KB · 3 pages · 43 characters · Real file")).toBeInTheDocument();
+    expect(screen.getAllByText(/Local test mode/)).toHaveLength(2);
     fireEvent.click(screen.getByText(/View extracted text/));
     expect(screen.getByText(result.text)).toBeInTheDocument();
     expect(adapter.inspect).toHaveBeenCalledWith(file);
