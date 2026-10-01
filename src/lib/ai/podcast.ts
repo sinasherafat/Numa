@@ -8,6 +8,7 @@ import {
   chunkNotesSchema,
   documentMapSchema,
   flattenTurns,
+  groundDocumentMapEvidence,
   podcastOutlineSchema,
   podcastTarget,
   spokenScriptSchema,
@@ -79,12 +80,14 @@ async function createChunkNotes(provider: AiProvider, chunks: string[], metrics:
 }
 
 async function createDocumentMap(provider: AiProvider, fileTitle: string, pageCount: number, notes: ChunkNotes[], sourceChunks: string[], metrics: GenerationMetrics[]) {
-  const map = await generateMeasured(provider, "document_map_synthesis", {
+  const generatedMap = await generateMeasured(provider, "document_map_synthesis", {
     schema: documentMapSchema,
     maxTokens: 1_400,
-    system: baseSystem("Synthesize passage notes into one compact internal document map, not a listener-facing summary. Resolve duplicates, retain disagreements and limitations, and do not add details absent from the notes. Create stable IDs I1, I2, etc. for the most important distinct ideas, with a maximum of ten. For each idea, choose one short evidence quotation copied verbatim from the ORIGINAL SOURCE passages, preserving exact words and punctuation; do not paraphrase the evidence quotation."),
-    prompt: `Source filename (a hint only): ${fileTitle}\nPhysical PDF pages: ${pageCount}\nThe following notes were generated from every semantic passage. Build a coherent whole-document map using both the notes and the ORIGINAL SOURCE TEXT. Copy evidence quotations from the source passages below, not from the notes. Keep each quotation to a short contiguous phrase.\n<passage-notes>\n${JSON.stringify(notes)}\n</passage-notes>\n<original-source-passages>\n${sourceChunks.map((chunk, index) => `<passage index="${index + 1}">\n${chunk}\n</passage>`).join("\n")}\n</original-source-passages>`,
+    system: baseSystem("Synthesize passage notes into one compact internal document map, not a listener-facing summary. Resolve duplicates, retain disagreements and limitations, and do not add details absent from the notes. Create stable IDs I1, I2, etc. for the most important distinct ideas, with a maximum of ten. For each idea, give a short evidence locator phrase using distinctive source terms; the server will attach a verified verbatim excerpt from the original PDF."),
+    prompt: `Source filename (a hint only): ${fileTitle}\nPhysical PDF pages: ${pageCount}\nThe following notes were generated from every semantic passage. Build a coherent whole-document map using both the notes and the ORIGINAL SOURCE TEXT. For each key idea, provide a brief evidence locator that contains distinctive words appearing in its supporting passage. Do not invent evidence. The server will attach an exact excerpt from the source.\n<passage-notes>\n${JSON.stringify(notes)}\n</passage-notes>\n<original-source-passages>\n${sourceChunks.map((chunk, index) => `<passage index="${index + 1}">\n${chunk}\n</passage>`).join("\n")}\n</original-source-passages>`,
   }, metrics);
+  const map = groundDocumentMapEvidence(generatedMap, sourceChunks);
+  if (!map) throw new AiProviderError("AI_OUTPUT_INVALID", undefined, "source_quote_mismatch");
   if (!validateDocumentMapEvidence(map, sourceChunks)) {
     throw new AiProviderError("AI_OUTPUT_INVALID", undefined, "source_quote_mismatch");
   }

@@ -158,3 +158,43 @@ export function validateDocumentMapEvidence(sourceMap: DocumentMap, sourceChunks
     return normalizedQuote.length > 0 && source.includes(normalizedQuote);
   }));
 }
+
+/** Attach exact excerpts from the source to model-written ideas using lexical overlap. */
+export function groundDocumentMapEvidence(sourceMap: DocumentMap, sourceChunks: string[]) {
+  const source = sourceChunks.join("\n")
+    .normalize("NFKC")
+    .replace(/(?<=\p{L})-[\t ]*\r?\n[\t ]*(?=\p{L})/gu, "")
+    .replace(/\u00ad/gu, "")
+    .replace(/\s+/gu, " ")
+    .trim();
+  const candidates = source
+    .split(/(?<=[.!?])\s+|\s*;\s+/gu)
+    .flatMap((sentence) => {
+      const words = sentence.match(/\S+/gu) ?? [];
+      if (words.length <= 36) return [sentence];
+      const segments: string[] = [];
+      for (let start = 0; start < words.length; start += 30) segments.push(words.slice(start, start + 36).join(" "));
+      return segments;
+    })
+    .map((text) => text.trim())
+    .filter((text) => text.length >= 16 && text.length <= 240);
+  const stopWords = new Set(["about", "after", "again", "also", "among", "because", "before", "being", "could", "does", "each", "from", "have", "into", "more", "most", "other", "over", "same", "some", "such", "than", "that", "their", "them", "then", "there", "these", "they", "this", "those", "through", "under", "using", "very", "what", "when", "where", "which", "while", "with", "would"]);
+  const terms = (text: string) => new Set((text.toLocaleLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?? []).filter((word) => !stopWords.has(word)));
+
+  const keyIdeas = sourceMap.keyIdeas.map((idea) => {
+    const queryTerms = terms([idea.point, ...idea.evidence].join(" "));
+    const ranked = candidates.map((text) => {
+      const candidateTerms = terms(text);
+      const matches = [...queryTerms].filter((word) => candidateTerms.has(word)).length;
+      return { text, matches, coverage: queryTerms.size === 0 ? 0 : matches / queryTerms.size };
+    }).sort((left, right) => right.coverage - left.coverage || right.matches - left.matches || left.text.length - right.text.length);
+    const best = ranked[0];
+    const minimumMatches = Math.min(2, queryTerms.size);
+    return best && best.matches >= minimumMatches && best.coverage >= 0.2
+      ? { ...idea, evidence: [best.text] }
+      : null;
+  });
+
+  if (keyIdeas.some((idea) => idea === null)) return null;
+  return { ...sourceMap, keyIdeas: keyIdeas as DocumentMap["keyIdeas"] };
+}

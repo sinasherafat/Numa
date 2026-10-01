@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chunkDocument, flattenTurns, podcastTarget, validateDocumentMapEvidence, validateSpokenScript, type DocumentMap, type SpokenScript } from "@/lib/ai/podcast-quality";
+import { chunkDocument, flattenTurns, groundDocumentMapEvidence, podcastTarget, validateDocumentMapEvidence, validateSpokenScript, type DocumentMap, type SpokenScript } from "@/lib/ai/podcast-quality";
 
 function mapFixture(): DocumentMap {
   return {
@@ -92,6 +92,15 @@ describe("podcast quality constraints", () => {
     source.keyIdeas = [source.keyIdeas[0]];
     source.keyIdeas[0].evidence = ["The research compares evidence."];
     expect(validateDocumentMapEvidence(source, ["The research com-\npares evidence!"])).toBe(true);
+  });
+
+  it("replaces model evidence clues with exact, relevant excerpts from the source", () => {
+    const source = mapFixture();
+    source.keyIdeas = [source.keyIdeas[0]];
+    source.keyIdeas[0].evidence = ["delayed testing and recall patterns"];
+    const grounded = groundDocumentMapEvidence(source, ["The research compares testing intervals and delayed recall. Another unrelated sentence describes participants."]);
+    expect(grounded?.keyIdeas[0].evidence).toEqual(["The research compares testing intervals and delayed recall."]);
+    expect(validateDocumentMapEvidence(grounded!, ["The research compares testing intervals and delayed recall. Another unrelated sentence describes participants."])).toBe(true);
   });
 
   it("rejects a long dialogue that claims unknown grounding IDs", () => {
