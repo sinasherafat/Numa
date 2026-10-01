@@ -158,7 +158,10 @@ h3 { font-size: 16px; line-height: 1.3; margin-bottom: 7px; }
 .podcast-result .row > div { display: grid; gap: 3px; }
 .podcast-result .row span, .podcast-result .fine { color: var(--muted); font-size: 11px; line-height: 1.45; margin: 0; }
 .podcast-result h3 { margin: 0; }
-.podcast-result audio { width: 100%; min-height: 40px; }
+.podcast-result audio { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.podcast-player-controls { display: grid; grid-template-columns: auto auto minmax(80px, 1fr) auto; gap: 9px; align-items: center; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.podcast-player-controls input[type="range"] { width: 100%; accent-color: var(--accent); }
+.podcast-player-controls .button { min-height: 34px; padding: 0 10px; }
 .podcast-result details { font-size: 12px; }
 .podcast-result summary { color: var(--accent); cursor: pointer; font-weight: 620; }
 .podcast-result pre { max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.55; }

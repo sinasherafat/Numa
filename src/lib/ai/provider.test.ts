@@ -28,12 +28,16 @@ describe("Cloudflare Workers AI provider adapter", () => {
   });
 
   it("sends one bounded JSON-mode generation request and validates its schema", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, result: { response: '{"answer":"grounded"}' } }), { headers: { "content-type": "application/json" } }));
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, result: { response: '{"answer":"grounded"}', usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 } } }), { headers: { "content-type": "application/json" } }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(new CloudflareWorkersAiProvider().generateJson({ system: "Be exact", prompt: "Small source", schema: responseSchema })).resolves.toEqual({ answer: "grounded" });
+    const result = await new CloudflareWorkersAiProvider().generateJsonWithMetrics({ system: "Be exact", prompt: "Small source", schema: responseSchema });
+    expect(result.value).toEqual({ answer: "grounded" });
+    expect(result.inputCharacters).toBeGreaterThan("Be exact".length + "Small source".length);
+    expect(result.outputCharacters).toBe('{"answer":"grounded"}'.length);
+    expect(result.usage).toEqual({ promptTokens: 8, completionTokens: 4, totalTokens: 12 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(String(fetchMock.mock.calls[0][0])).toContain("/@cf/meta/llama-3.1-8b-instruct");
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/@cf/meta/llama-3.3-70b-instruct-fp8-fast");
     const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(body.response_format.type).toBe("json_schema");
     expect(body.response_format.json_schema).toMatchObject({
@@ -104,6 +108,19 @@ describe("Cloudflare Workers AI provider adapter", () => {
 
     expect(audio.bytes).toEqual(mp3);
     expect(audio.mediaType).toBe("audio/mpeg");
+  });
+
+  it("synthesizes raw-turn MP3 with Aura-1 and an explicit speaker without speaking labels", async () => {
+    const mp3 = tinyMp3();
+    const fetchMock = vi.fn().mockResolvedValue(new Response(mp3, { headers: { "content-type": "audio/mpeg" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const audio = await new CloudflareWorkersAiProvider().synthesizeTurn("This is the spoken sentence.", "asteria");
+    expect(audio.mediaType).toBe("audio/mpeg");
+    expect(audio.bytes).toEqual(mp3);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/@cf/deepgram/aura-1");
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({ text: "This is the spoken sentence.", speaker: "asteria", encoding: "mp3" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("fails closed when credentials are absent", async () => {

@@ -37,7 +37,7 @@ The `pnpm` wrapper first tried to synchronize its modules directory while the np
 
 ## Automated checks
 
-### Current state after Cloudflare Preview configuration (2026-10-01)
+### Historical integration checkpoint before the direct podcast MVP (2026-10-01)
 
 The signed-in Vercel dashboard lists `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `NUMA_AI_PROVIDER` in Preview scope; values are masked and were not read. A real authenticated PDF upload reached the private upload callback and Blob verification, but its job-create RPC failed with PostgreSQL `42501 Invalid workflow credential`. The database contains a SHA-256 workflow verifier row, but its digest does not match the current Preview `NUMA_WORKFLOW_SECRET`. No job, Cloudflare operation, or PDF→podcast result was produced. This is a credential synchronization failure, not evidence of a Cloudflare provider failure.
 
@@ -91,6 +91,18 @@ The 2026-09-30 local rerun used the current source in the in-app Chromium browse
 Historical hosted-browser evidence for J01–J06 applies only to the checkpoint/deployment documented when it ran. On application SHA `e5333086152e2a63c4537f519089ab8755d7ddfb`, the hosted session verified sample route rendering and the private login boundary, but not authenticated live workspace journeys.
 
 Previous checkpoint HTTP smoke evidence remains historical; it does not establish current provider availability or authenticated access. The application-code Preview deployment's dashboard record matched the feature branch and commit SHA; hosted browser inspection confirmed the five sample pages and private route's login boundary. Deployment Protection was not disabled or bypassed.
+
+## Podcast quality diagnosis and rework (2026-10-01)
+
+The user's 12-page Pangaan listening test was reported as about 18 seconds and essentially a title plus generic description. The prior code did not capture request or response metrics, so the exact extracted character count, provider token counts, result length, and script word count for that completed human run are **not recoverable from the saved server logs**. Do not infer them from duration.
+
+The deployed single-pass route at that checkpoint used `@cf/meta/llama-3.1-8b-instruct`, `maxTokens: 1100`, and one user prompt containing the complete extracted text (bounded by the 20,000-character route input limit; it did not chunk or intentionally truncate). Its system prompt requested a “natural two-host conversation” of only 280–500 spoken words, while the user prompt explicitly requested a “short educational podcast.” The output schema accepted any script from 200 to 4,000 characters; the only post-parse word check rejected outputs over 550 words. There was no minimum-length, source-specificity, outline, or source-map quality check. Consequently, a very short title/description could pass and reach TTS. The then-current PR body recorded a separate 2-page, 3,599-character PDF test yielding 14 seconds of MeloTTS audio; that is not the user's reported 12-page test.
+
+The current worktree replaces that path with semantic source chunks → chunk notes and verbatim evidence → synthesized document map → adaptive outline → English spoken dialogue. An 8–15 page source targets 600–800 words and 5–7 minutes. A quality failure can trigger one script retry; a second short/ungrounded result fails closed before speech. Every map idea must retain an exact quotation found in the extracted text. The script covers at least four valid idea IDs, and TTS receives the text of each turn only. Aura-1 generates each turn with alternating Angus/Asteria speakers; the browser plays those real MP3 segments sequentially with progress and seeking. The server records page count, source characters/chunks, per-stage input/output characters and provider token usage when returned, outline count, script words/characters, target, TTS characters/segment count, and measured audio duration/bytes without logging document content.
+
+For an 8–15 page source, direct Preview speech is bounded to 5,000 characters (about 6,819 Aura-1 Neurons at Cloudflare's published rate), with a 16-segment / 8 MiB / seven-minute cap. There are at most five 4,500-character chunks, 800 spoken words, 20,000 extracted source characters, and one script-only retry. Cloudflare Workers Free has an account-wide 10,000-Neuron daily ceiling; if other account activity consumes the remainder, requests fail closed. No paid plan, card, AI Gateway, fallback, or fixture path is used.
+
+The new local checks were TypeScript, ESLint, Vitest 53/53, production build, and `git diff --check`; build retains the existing non-fatal `@vercel/queue` critical-dependency warning. These tests are deterministic contracts, not live inference proof. A matching 12-page Pangaan PDF candidate is present locally and extracts to 13,443 characters; its new Preview request, model/token metrics, human listening, and deployment SHA remain pending. No success claim is made for this quality rework until the hosted recording is reviewed.
 
 ## Deployment safety
 
