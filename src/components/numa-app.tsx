@@ -237,7 +237,7 @@ function NewSession({ state, setState, localDocument, setLocalDocument }: { stat
           <div className="field"><label htmlFor="level">Your familiarity</label><select id="level" className="select" value={state.level} onChange={e => setState(s => ({...s, level: e.target.value as AppState["level"]}))}><option value="beginner">Beginner</option><option value="familiar">Familiar</option><option value="advanced">Advanced</option></select></div>
         </div>
         <div className="field"><label>Duration</label><div className="segmented">{([5,10,20] as const).map(d => <button key={d} className={`segment ${state.duration === d ? "active" : ""}`} onClick={() => setState(s => ({...s,duration:d}))}>{d} min</button>)}</div></div>
-        <p className="local-flow-note">The real PDF → Cloudflare script → MeloTTS audio path is available above. The separate learning plan, transcript, and other feature screens remain illustrative previews. Local source text and generated audio stay in this browser session and are not saved remotely.</p>
+        <p className="local-flow-note">The real PDF → Cloudflare source map and script → Deepgram Aura-1 audio path is available above. The separate learning plan, transcript, and other feature screens remain illustrative previews. Local source text and generated audio stay in this browser session and are not saved remotely.</p>
         <div className="row form-actions"><button className="button primary" disabled={!localDocument} onClick={() => router.push("/plan")}>Review plan <ArrowRight size={17}/></button><button className="button" onClick={() => router.push("/library")}>View sample library</button></div>
       </section>
       <div className="section-stack">
