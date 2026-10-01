@@ -79,14 +79,16 @@ async function createChunkNotes(provider: AiProvider, chunks: string[], metrics:
   return notes;
 }
 
-async function createDocumentMap(provider: AiProvider, fileTitle: string, pageCount: number, notes: ChunkNotes[], sourceChunks: string[], metrics: GenerationMetrics[]) {
+async function createDocumentMap(provider: AiProvider, fileTitle: string, pageCount: number, notes: ChunkNotes[], sourceChunks: string[], metrics: GenerationMetrics[], onEvidenceStats: (stats: { matched: number; total: number }) => void) {
   const generatedMap = await generateMeasured(provider, "document_map_synthesis", {
     schema: documentMapSchema,
     maxTokens: 1_400,
     system: baseSystem("Synthesize passage notes into one compact internal document map, not a listener-facing summary. Resolve duplicates, retain disagreements and limitations, and do not add details absent from the notes. Create stable IDs I1, I2, etc. for the most important distinct ideas, with a maximum of ten. For each idea, give a short evidence locator phrase using distinctive source terms; the server will attach a verified verbatim excerpt from the original PDF."),
     prompt: `Source filename (a hint only): ${fileTitle}\nPhysical PDF pages: ${pageCount}\nThe following notes were generated from every semantic passage. Build a coherent whole-document map using both the notes and the ORIGINAL SOURCE TEXT. For each key idea, provide a brief evidence locator that contains distinctive words appearing in its supporting passage. Do not invent evidence. The server will attach an exact excerpt from the source.\n<passage-notes>\n${JSON.stringify(notes)}\n</passage-notes>\n<original-source-passages>\n${sourceChunks.map((chunk, index) => `<passage index="${index + 1}">\n${chunk}\n</passage>`).join("\n")}\n</original-source-passages>`,
   }, metrics);
-  const map = groundDocumentMapEvidence(generatedMap, sourceChunks);
+  const evidence = groundDocumentMapEvidence(generatedMap, sourceChunks);
+  onEvidenceStats({ matched: evidence.matchedIdeas, total: evidence.totalIdeas });
+  const map = evidence.map;
   if (!map) throw new AiProviderError("AI_OUTPUT_INVALID", undefined, "source_quote_mismatch");
   if (!validateDocumentMapEvidence(map, sourceChunks)) {
     throw new AiProviderError("AI_OUTPUT_INVALID", undefined, "source_quote_mismatch");
@@ -148,6 +150,8 @@ export function streamPodcast(input: PodcastInput, provider: AiProvider = getAiP
         const chunks = chunkDocument(input.text);
         const target = podcastTarget(input.pageCount);
         let scriptStats: ReturnType<typeof validateSpokenScript> | undefined;
+        let mapEvidenceMatched: number | undefined;
+        let mapEvidenceTotal: number | undefined;
         let audioDurationMs = 0;
         let audioBytes = 0;
         let ttsCharacters = 0;
@@ -160,6 +164,8 @@ export function streamPodcast(input: PodcastInput, provider: AiProvider = getAiP
           sourceCharacters,
           sourceChunks: chunks.length,
           modelRequests: metrics,
+          mapEvidenceMatched,
+          mapEvidenceTotal,
           outlineSections,
           scriptWords: scriptStats?.words,
           scriptCharacters: scriptStats?.characters,
@@ -181,7 +187,10 @@ export function streamPodcast(input: PodcastInput, provider: AiProvider = getAiP
           sse(controller, "stage", { stage });
           const notes = await createChunkNotes(provider, chunks, metrics);
           const sourceName = input.fileName.replace(/\.pdf$/i, "");
-          const map = await createDocumentMap(provider, sourceName, input.pageCount, notes, chunks, metrics);
+          const map = await createDocumentMap(provider, sourceName, input.pageCount, notes, chunks, metrics, ({ matched, total }) => {
+            mapEvidenceMatched = matched;
+            mapEvidenceTotal = total;
+          });
           stage = "creating_outline";
           sse(controller, "stage", { stage });
           const { outline } = await createOutline(provider, map, input.pageCount, metrics);
@@ -250,6 +259,8 @@ export function streamPodcast(input: PodcastInput, provider: AiProvider = getAiP
             sourceCharacters,
             sourceChunks: chunks.length,
             modelRequests: metrics,
+            mapEvidenceMatched,
+            mapEvidenceTotal,
             outlineSections,
             ...(scriptStats ? { scriptQuality: scriptStats } : {}),
             targetDuration: target.minutes,

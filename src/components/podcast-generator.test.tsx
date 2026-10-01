@@ -37,7 +37,7 @@ describe("PodcastGenerator", () => {
   });
 
   it("never shows a success player when the provider returns an error", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response('event: error\ndata: {"message":"Cloudflare free allocation exhausted. No podcast was created.","stage":"understanding_document","code":"AI_OUTPUT_INVALID","diagnostic":"source_quote_mismatch","sourcePages":1,"sourceCharacters":61,"sourceChunks":1,"scriptQuality":{"valid":false,"words":180,"characters":1000,"turns":6,"coveredIdeas":2,"specificTerms":3},"modelRequests":[{"step":"document_map_chunk_1","model":"@cf/meta/llama-3.3-70b-instruct-fp8-fast","inputCharacters":600,"outputCharacters":210,"promptTokens":90,"completionTokens":40,"totalTokens":130}]}\n\n', { headers: { "Content-Type": "text/event-stream" } })));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response('event: error\ndata: {"message":"Cloudflare free allocation exhausted. No podcast was created.","stage":"understanding_document","code":"AI_OUTPUT_INVALID","diagnostic":"source_quote_mismatch","sourcePages":1,"sourceCharacters":61,"sourceChunks":1,"mapEvidenceMatched":2,"mapEvidenceTotal":4,"scriptQuality":{"valid":false,"words":180,"characters":1000,"turns":6,"coveredIdeas":2,"specificTerms":3},"modelRequests":[{"step":"document_map_chunk_1","model":"@cf/meta/llama-3.3-70b-instruct-fp8-fast","inputCharacters":600,"outputCharacters":210,"promptTokens":90,"completionTokens":40,"totalTokens":130}]}\n\n', { headers: { "Content-Type": "text/event-stream" } })));
     render(<PodcastGenerator document={document}/>);
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Generate Podcast" }));
@@ -46,6 +46,7 @@ describe("PodcastGenerator", () => {
     expect(screen.queryByText(/Live podcast ready/)).not.toBeInTheDocument();
     expect(screen.getByText(/safe generation diagnostics/i)).toBeInTheDocument();
     expect(screen.getByText(/source_quote_mismatch/)).toBeInTheDocument();
+    expect(screen.getByText(/\"mapEvidenceMatched\": 2/)).toBeInTheDocument();
     expect(screen.getByText(/"words": 180/)).toBeInTheDocument();
     expect(screen.queryByText(document.text)).not.toBeInTheDocument();
   });

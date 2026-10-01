@@ -171,30 +171,54 @@ export function groundDocumentMapEvidence(sourceMap: DocumentMap, sourceChunks: 
     .split(/(?<=[.!?])\s+|\s*;\s+/gu)
     .flatMap((sentence) => {
       const words = sentence.match(/\S+/gu) ?? [];
-      if (words.length <= 36) return [sentence];
+      if (sentence.length <= 200) return [sentence];
       const segments: string[] = [];
-      for (let start = 0; start < words.length; start += 30) segments.push(words.slice(start, start + 36).join(" "));
+      let start = 0;
+      while (start < words.length) {
+        let end = start;
+        let length = 0;
+        while (end < words.length && length + words[end].length + (end > start ? 1 : 0) <= 200) {
+          length += words[end].length + (end > start ? 1 : 0);
+          end += 1;
+        }
+        if (end === start) break;
+        segments.push(words.slice(start, end).join(" "));
+        if (end === words.length) break;
+        start = Math.max(start + 1, end - 5);
+      }
       return segments;
     })
     .map((text) => text.trim())
     .filter((text) => text.length >= 16 && text.length <= 240);
   const stopWords = new Set(["about", "after", "again", "also", "among", "because", "before", "being", "could", "does", "each", "from", "have", "into", "more", "most", "other", "over", "same", "some", "such", "than", "that", "their", "them", "then", "there", "these", "they", "this", "those", "through", "under", "using", "very", "what", "when", "where", "which", "while", "with", "would"]);
-  const terms = (text: string) => new Set((text.toLocaleLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?? []).filter((word) => !stopWords.has(word)));
+  const terms = (text: string) => new Set((text.toLocaleLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?? [])
+    .map((word) => word.length > 5 && word.endsWith("ies") ? `${word.slice(0, -3)}y` : word.length > 5 && word.endsWith("s") && !word.endsWith("ss") ? word.slice(0, -1) : word)
+    .filter((word) => !stopWords.has(word)));
 
+  let matchedIdeas = 0;
   const keyIdeas = sourceMap.keyIdeas.map((idea) => {
-    const queryTerms = terms([idea.point, ...idea.evidence].join(" "));
+    const pointTerms = terms(idea.point);
+    const locatorTerms = terms(idea.evidence.join(" "));
     const ranked = candidates.map((text) => {
       const candidateTerms = terms(text);
-      const matches = [...queryTerms].filter((word) => candidateTerms.has(word)).length;
-      return { text, matches, coverage: queryTerms.size === 0 ? 0 : matches / queryTerms.size };
-    }).sort((left, right) => right.coverage - left.coverage || right.matches - left.matches || left.text.length - right.text.length);
+      const pointMatches = [...pointTerms].filter((word) => candidateTerms.has(word)).length;
+      const locatorMatches = [...locatorTerms].filter((word) => candidateTerms.has(word)).length;
+      return { text, pointMatches, locatorMatches, coverage: pointTerms.size === 0 ? 0 : pointMatches / pointTerms.size };
+    }).sort((left, right) => right.coverage - left.coverage || right.pointMatches - left.pointMatches || right.locatorMatches - left.locatorMatches || left.text.length - right.text.length);
     const best = ranked[0];
-    const minimumMatches = Math.min(2, queryTerms.size);
-    return best && best.matches >= minimumMatches && best.coverage >= 0.2
-      ? { ...idea, evidence: [best.text] }
-      : null;
+    const minimumMatches = Math.min(2, pointTerms.size);
+    const ideaGrounded = best && best.pointMatches >= minimumMatches && best.coverage >= 0.25;
+    const locatorGrounded = best && best.pointMatches >= 1 && best.locatorMatches >= 2;
+    if (best && (ideaGrounded || locatorGrounded)) {
+      matchedIdeas += 1;
+      return { ...idea, evidence: [best.text] };
+    }
+    return null;
   });
 
-  if (keyIdeas.some((idea) => idea === null)) return null;
-  return { ...sourceMap, keyIdeas: keyIdeas as DocumentMap["keyIdeas"] };
+  return {
+    map: keyIdeas.some((idea) => idea === null) ? null : { ...sourceMap, keyIdeas: keyIdeas as DocumentMap["keyIdeas"] },
+    matchedIdeas,
+    totalIdeas: sourceMap.keyIdeas.length,
+  };
 }

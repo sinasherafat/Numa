@@ -99,8 +99,9 @@ describe("podcast quality constraints", () => {
     source.keyIdeas = [source.keyIdeas[0]];
     source.keyIdeas[0].evidence = ["delayed testing and recall patterns"];
     const grounded = groundDocumentMapEvidence(source, ["The research compares testing intervals and delayed recall. Another unrelated sentence describes participants."]);
-    expect(grounded?.keyIdeas[0].evidence).toEqual(["The research compares testing intervals and delayed recall."]);
-    expect(validateDocumentMapEvidence(grounded!, ["The research compares testing intervals and delayed recall. Another unrelated sentence describes participants."])).toBe(true);
+    expect(grounded.map?.keyIdeas[0].evidence).toEqual(["The research compares testing intervals and delayed recall."]);
+    expect(grounded.matchedIdeas).toBe(1);
+    expect(validateDocumentMapEvidence(grounded.map!, ["The research compares testing intervals and delayed recall. Another unrelated sentence describes participants."])).toBe(true);
   });
 
   it("rejects a long dialogue that claims unknown grounding IDs", () => {

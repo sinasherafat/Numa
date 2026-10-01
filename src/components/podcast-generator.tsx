@@ -14,6 +14,8 @@ type PodcastDiagnostic = {
   sourcePages?: number;
   sourceCharacters?: number;
   sourceChunks?: number;
+  mapEvidenceMatched?: number;
+  mapEvidenceTotal?: number;
   outlineSections?: number;
   scriptQuality?: { valid: boolean; words: number; characters: number; turns: number; coveredIdeas: number; specificTerms: number };
   targetDuration?: string;
@@ -164,6 +166,8 @@ export function PodcastGenerator({ document }: { document: UploadDocument }) {
               ...(typeof payload.sourcePages === "number" && Number.isFinite(payload.sourcePages) ? { sourcePages: payload.sourcePages } : {}),
               ...(typeof payload.sourceCharacters === "number" && Number.isFinite(payload.sourceCharacters) ? { sourceCharacters: payload.sourceCharacters } : {}),
               ...(typeof payload.sourceChunks === "number" && Number.isFinite(payload.sourceChunks) ? { sourceChunks: payload.sourceChunks } : {}),
+              ...(typeof payload.mapEvidenceMatched === "number" && Number.isFinite(payload.mapEvidenceMatched) ? { mapEvidenceMatched: payload.mapEvidenceMatched } : {}),
+              ...(typeof payload.mapEvidenceTotal === "number" && Number.isFinite(payload.mapEvidenceTotal) ? { mapEvidenceTotal: payload.mapEvidenceTotal } : {}),
               ...(typeof payload.outlineSections === "number" && Number.isFinite(payload.outlineSections) ? { outlineSections: payload.outlineSections } : {}),
               ...(typeof payload.targetDuration === "string" ? { targetDuration: payload.targetDuration } : {}),
               ...(typeof payload.targetMinimumWords === "number" && Number.isFinite(payload.targetMinimumWords) ? { targetMinimumWords: payload.targetMinimumWords } : {}),
