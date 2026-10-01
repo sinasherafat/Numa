@@ -1,5 +1,13 @@
 # Resumable checkpoint
 
+## Latest resumed test checkpoint (2026-10-01)
+
+- Existing branch `codex/numa-v1`; before the diagnostics-only working change, local `HEAD` and `origin/codex/numa-v1` both equaled `d884cffdd8605dbd9b27393acc7faa940cd13171`. Existing PR #1 remains the only PR; do not create another, merge it, or deploy Production.
+- Current Preview tab: `https://numa-git-codex-numa-v1-sinas-projects-111632f8.vercel.app/new`. The selected actual PDF is `/private/tmp/numa-preview.msIcOn/Pangaan_Intent_Commerce_Event_Exchange_vs_HodHodHub.pdf`, 247,110 bytes; SHA-256 `ff563b367c92f185229477e452fb634b438fb8add6658eb7023b566f5abe3f32`; browser extracted 12 pages / 13,465 characters. The user explicitly consented to sending extracted text to Cloudflare.
+- The live d884cff run made real requests to `@cf/meta/llama-3.3-70b-instruct-fp8-fast` for four chunk notes, map synthesis and outline; source quotation validation passed after the source-context fix. Two script calls returned real provider output but both were rejected by script quality validation. No TTS, audio, storage, DB, or playback happened. The diagnostic SSE lacked aggregate script-quality details.
+- Current worktree adds privacy-safe `scriptQuality` counters and target/outline counts to the failure event/client diagnostics, with regression tests. Full typecheck, lint, 55/55 Vitest, production build, and whitespace check pass. Commit and push this diagnostics change on the same branch, wait for its Preview check, and repeat the exact PDF flow to inspect the safe counters before considering a bounded code fix. The PDF's consent checkbox must be checked for that deliberate rerun.
+- Remaining acceptance: pass script validation, real Deepgram Aura-1 synthesis, and verify actual player playback at beginning/middle/end. Do not call Numa v1.0 live before that. F01–F05 and durable Blob/Supabase persistence are outside this direct session-only loop and their screens remain illustrative. The legacy Workflow credential issue remains independent.
+
 Updated 2026-10-01 on the existing `codex/numa-v1` branch at `656a304256e6c333654915c544ba7316e5181fd0`; the worktree was clean after the implementation push.
 
 ## Repository and PR

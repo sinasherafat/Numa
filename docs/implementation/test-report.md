@@ -108,6 +108,12 @@ For an 8–15 page source, direct Preview speech is bounded to 5,000 characters 
 
 Full local checks now pass: TypeScript, ESLint, Vitest 55/55, production build, and `git diff --check`. The build retains the existing non-fatal `@vercel/queue` critical-dependency warning. The hosted 12-page attempt failed at map evidence validation before outline/script/TTS. The current worktree fixes the confirmed omission by supplying original passages to map synthesis and normalizing PDF line wrapping/punctuation while preserving contiguous word order. Hosted verification of that fix remains pending. No live quality success claim is made.
 
+### Hosted rerun after source-map correction (2026-10-01)
+
+The Preview deployment at `d884cffdd8605dbd9b27393acc7faa940cd13171` parsed the real 12-page PDF in-browser (13,465 extracted characters) and, after explicit text-transfer consent, executed four real Cloudflare chunk-note requests, source-grounded map synthesis, and outline generation. The original-source quotation gate passed. Two real script generations completed (reported output sizes 3,976 and 4,561 characters), but both failed the script acceptance predicate. No Aura-1 call, TTS output, ready event, audio player, Blob write, database write, or playback occurred. The user's source text remains browser-local other than consented prompt transmission; it was not persisted. The safe failure event omitted the reason counters, so the current change adds only script word/character/turn/idea/term counts and target bounds (never text). A bounded Preview rerun is still required.
+
+The diagnostics-only change passes TypeScript, ESLint, the full 55-test Vitest suite, and `next build --webpack`; the existing `@vercel/queue` warning remains non-fatal. Build and hosted recheck after the new commit are pending.
+
 ## Deployment safety
 
 The first Git-triggered deployment of this newly created project was incorrectly auto-promoted by Vercel even though the configured production branch was `main`. It was removed immediately. A subsequent explicit `--target preview` deployment was verified, and the deployment listing contained only the `Preview` target. No production deployment is retained.

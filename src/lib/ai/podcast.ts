@@ -247,6 +247,10 @@ export function streamPodcast(input: PodcastInput, provider: AiProvider = getAiP
             sourceCharacters,
             sourceChunks: chunks.length,
             modelRequests: metrics,
+            outlineSections,
+            ...(scriptStats ? { scriptQuality: scriptStats } : {}),
+            targetDuration: target.minutes,
+            targetMinimumWords: target.minWords,
           });
           controller.close();
         }

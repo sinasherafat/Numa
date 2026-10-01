@@ -118,6 +118,8 @@ describe("multi-stage source-grounded podcast stream", () => {
     const { provider, synthesizeTurn } = providerFor(short, short);
     const body = await (await streamPodcast(input, provider)).text();
     expect(body).toContain("script did not meet this source's length and grounding checks");
+    expect(body).toContain('"scriptQuality":{"valid":false');
+    expect(body).toContain('"targetMinimumWords":600');
     expect(body).not.toContain('event: ready');
     expect(synthesizeTurn).not.toHaveBeenCalled();
   });
