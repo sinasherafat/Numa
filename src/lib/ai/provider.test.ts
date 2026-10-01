@@ -35,7 +35,12 @@ describe("Cloudflare Workers AI provider adapter", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(String(fetchMock.mock.calls[0][0])).toContain("/@cf/meta/llama-3.1-8b-instruct");
     const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
-    expect(body.response_format).toEqual({ type: "json_object" });
+    expect(body.response_format.type).toBe("json_schema");
+    expect(body.response_format.json_schema).toMatchObject({
+      type: "object",
+      properties: { answer: { type: "string" } },
+      required: ["answer"],
+    });
     expect(body.max_tokens).toBeLessThanOrEqual(4096);
   });
 
