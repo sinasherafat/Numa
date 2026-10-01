@@ -7,6 +7,15 @@ import type { UploadDocument } from "@/lib/uploads/local";
 type PodcastStage = "preparing_document" | "understanding_document" | "creating_outline" | "writing_script" | "generating_audio";
 type PodcastReady = { title: string; script: string; durationMs: number; mediaType: string; audioSegments: Array<{ speaker: string; durationMs: number; audioBase64: string; mediaType: string }>; provider: string; llmModel: string; ttsModel: string; speakers: { host_a: string; host_b: string } };
 type PlayableSegment = { speaker: string; durationMs: number; url: string };
+type PodcastDiagnostic = {
+  stage?: string;
+  code?: string;
+  diagnostic?: string;
+  sourcePages?: number;
+  sourceCharacters?: number;
+  sourceChunks?: number;
+  modelRequests?: Array<{ step: string; model: string; inputCharacters: number; outputCharacters: number; promptTokens?: number; completionTokens?: number; totalTokens?: number }>;
+};
 
 const stageLabels: Record<PodcastStage, string> = {
   preparing_document: "Preparing extracted PDF text",
@@ -42,6 +51,7 @@ export function PodcastGenerator({ document }: { document: UploadDocument }) {
   const [playing, setPlaying] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [error, setError] = useState("");
+  const [diagnostic, setDiagnostic] = useState<PodcastDiagnostic | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const seekAfterLoad = useRef<number | null>(null);
   const playOnNextSegment = useRef(false);
@@ -88,6 +98,7 @@ export function PodcastGenerator({ document }: { document: UploadDocument }) {
     if (!consent || busy) return;
     setBusy(true);
     setError("");
+    setDiagnostic(null);
     setStage("preparing_document");
     setResult(null);
     setPlaying(false);
@@ -128,14 +139,28 @@ export function PodcastGenerator({ document }: { document: UploadDocument }) {
           if (event === "stage" && typeof payload.stage === "string" && payload.stage in stageLabels) {
             setStage(payload.stage as PodcastStage);
           } else if (event === "error") {
-            console.info("Numa podcast generation diagnostic", {
-              stage: payload.stage,
-              code: payload.code,
-              diagnostic: payload.diagnostic,
-              sourcePages: payload.sourcePages,
-              sourceCharacters: payload.sourceCharacters,
-              sourceChunks: payload.sourceChunks,
-              modelRequests: payload.modelRequests,
+            const modelRequests = Array.isArray(payload.modelRequests) ? payload.modelRequests.flatMap((request) => {
+              if (!request || typeof request !== "object") return [];
+              const record = request as Record<string, unknown>;
+              if (typeof record.step !== "string" || typeof record.model !== "string" || typeof record.inputCharacters !== "number" || !Number.isFinite(record.inputCharacters) || typeof record.outputCharacters !== "number" || !Number.isFinite(record.outputCharacters)) return [];
+              return [{
+                step: record.step,
+                model: record.model,
+                inputCharacters: Number(record.inputCharacters),
+                outputCharacters: Number(record.outputCharacters),
+                ...(typeof record.promptTokens === "number" && Number.isFinite(record.promptTokens) ? { promptTokens: record.promptTokens } : {}),
+                ...(typeof record.completionTokens === "number" && Number.isFinite(record.completionTokens) ? { completionTokens: record.completionTokens } : {}),
+                ...(typeof record.totalTokens === "number" && Number.isFinite(record.totalTokens) ? { totalTokens: record.totalTokens } : {}),
+              }];
+            }) : undefined;
+            setDiagnostic({
+              ...(typeof payload.stage === "string" ? { stage: payload.stage } : {}),
+              ...(typeof payload.code === "string" ? { code: payload.code } : {}),
+              ...(typeof payload.diagnostic === "string" ? { diagnostic: payload.diagnostic } : {}),
+              ...(typeof payload.sourcePages === "number" && Number.isFinite(payload.sourcePages) ? { sourcePages: payload.sourcePages } : {}),
+              ...(typeof payload.sourceCharacters === "number" && Number.isFinite(payload.sourceCharacters) ? { sourceCharacters: payload.sourceCharacters } : {}),
+              ...(typeof payload.sourceChunks === "number" && Number.isFinite(payload.sourceChunks) ? { sourceChunks: payload.sourceChunks } : {}),
+              ...(modelRequests ? { modelRequests } : {}),
             });
             throw new Error(typeof payload.message === "string" ? payload.message : "Live podcast generation failed. No sample audio was substituted.");
           } else if (event === "ready") {
@@ -174,6 +199,7 @@ export function PodcastGenerator({ document }: { document: UploadDocument }) {
     </button>
     {busy && <p className="podcast-progress" role="status"><LoaderCircle className="upload-spinner" size={16}/>{stage ? stageLabels[stage] : "Connecting to Cloudflare…"}</p>}
     {error && <p className="upload-error" role="alert"><XCircle size={17}/>{error}</p>}
+    {diagnostic && <details className="podcast-diagnostic"><summary>Safe generation diagnostics · no document text</summary><pre>{JSON.stringify(diagnostic, null, 2)}</pre></details>}
     {result && segments.length > 0 && <div className="podcast-result" role="status">
       <div className="row"><CheckCircle2 size={18} className="success"/><div><strong>Live podcast ready · {formatDuration(totalDurationMs)}</strong><span>{result.llmModel} · {result.ttsModel} · Host A ({result.speakers.host_a}) and Host B ({result.speakers.host_b})</span></div></div>
       <h3>{result.title}</h3>
