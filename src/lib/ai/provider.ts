@@ -15,7 +15,11 @@ export interface AiProvider {
 }
 
 export class AiProviderError extends Error {
-  constructor(readonly code: "AI_PROVIDER_NOT_CONFIGURED" | "AI_RATE_LIMIT" | "AI_DAILY_LIMIT_REACHED" | "AI_PROVIDER_FAILED" | "AI_OUTPUT_INVALID", readonly status?: number) {
+  constructor(
+    readonly code: "AI_PROVIDER_NOT_CONFIGURED" | "AI_RATE_LIMIT" | "AI_DAILY_LIMIT_REACHED" | "AI_PROVIDER_FAILED" | "AI_OUTPUT_INVALID",
+    readonly status?: number,
+    readonly diagnostic?: "empty_model_output" | "malformed_model_json" | "model_schema_mismatch" | "script_word_limit",
+  ) {
     super(code);
     this.name = "AiProviderError";
   }
@@ -117,11 +121,11 @@ export class CloudflareWorkersAiProvider implements AiProvider {
     if (response !== undefined && response !== null && typeof response === "object") {
       parsed = response;
     } else {
-      if (!text) throw new AiProviderError("AI_OUTPUT_INVALID");
-      try { parsed = JSON.parse(text); } catch { throw new AiProviderError("AI_OUTPUT_INVALID"); }
+      if (!text) throw new AiProviderError("AI_OUTPUT_INVALID", undefined, "empty_model_output");
+      try { parsed = JSON.parse(text); } catch { throw new AiProviderError("AI_OUTPUT_INVALID", undefined, "malformed_model_json"); }
     }
     const validated = schema.safeParse(parsed);
-    if (!validated.success) throw new AiProviderError("AI_OUTPUT_INVALID");
+    if (!validated.success) throw new AiProviderError("AI_OUTPUT_INVALID", undefined, "model_schema_mismatch");
     return validated.data;
   }
 

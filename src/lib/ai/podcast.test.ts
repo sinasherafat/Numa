@@ -46,7 +46,7 @@ describe("direct PDF-to-podcast stream", () => {
   });
 
   it("identifies a malformed real-provider script without echoing source content", async () => {
-    const generateJson = vi.fn().mockRejectedValue(new AiProviderError("AI_OUTPUT_INVALID"));
+    const generateJson = vi.fn().mockRejectedValue(new AiProviderError("AI_OUTPUT_INVALID", undefined, "model_schema_mismatch"));
     const synthesize = vi.fn();
     const response = streamPodcast(input, { id: "cloudflare-workers-ai", generateJson, synthesize } as unknown as AiProvider);
     const body = await response.text();

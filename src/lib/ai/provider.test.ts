@@ -54,7 +54,7 @@ describe("Cloudflare Workers AI provider adapter", () => {
   it("rejects malformed or schema-invalid generation without retrying", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, result: { response: '{"wrong":true}' } }), { headers: { "content-type": "application/json" } }));
     vi.stubGlobal("fetch", fetchMock);
-    await expect(new CloudflareWorkersAiProvider().generateJson({ system: "", prompt: "", schema: responseSchema })).rejects.toMatchObject({ code: "AI_OUTPUT_INVALID" });
+    await expect(new CloudflareWorkersAiProvider().generateJson({ system: "", prompt: "", schema: responseSchema })).rejects.toMatchObject({ code: "AI_OUTPUT_INVALID", diagnostic: "model_schema_mismatch" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
