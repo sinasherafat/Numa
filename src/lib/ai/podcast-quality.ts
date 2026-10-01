@@ -145,7 +145,16 @@ export function validateSpokenScript(script: SpokenScript, sourceMap: DocumentMa
 }
 
 export function validateDocumentMapEvidence(sourceMap: DocumentMap, sourceChunks: string[]) {
-  const normalize = (value: string) => value.replace(/\s+/gu, " ").trim().toLocaleLowerCase();
+  const normalize = (value: string) => value
+    .normalize("NFKC")
+    .replace(/(?<=\p{L})-[\t ]*\r?\n[\t ]*(?=\p{L})/gu, "")
+    .replace(/\u00ad/gu, "")
+    .toLocaleLowerCase()
+    .match(/[\p{L}\p{N}]+/gu)
+    ?.join(" ") ?? "";
   const source = normalize(sourceChunks.join("\n"));
-  return sourceMap.keyIdeas.every((idea) => idea.evidence.some((quote) => source.includes(normalize(quote))));
+  return sourceMap.keyIdeas.every((idea) => idea.evidence.some((quote) => {
+    const normalizedQuote = normalize(quote);
+    return normalizedQuote.length > 0 && source.includes(normalizedQuote);
+  }));
 }

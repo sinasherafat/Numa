@@ -83,7 +83,7 @@ async function createDocumentMap(provider: AiProvider, fileTitle: string, pageCo
     schema: documentMapSchema,
     maxTokens: 1_400,
     system: baseSystem("Synthesize passage notes into one compact internal document map, not a listener-facing summary. Resolve duplicates, retain disagreements and limitations, and do not add details absent from the notes. Create stable IDs I1, I2, etc. for the most important distinct ideas, with a maximum of ten. For each idea, choose one short evidence quotation copied verbatim from the ORIGINAL SOURCE passages, preserving exact words and punctuation; do not paraphrase the evidence quotation."),
-    prompt: `Source filename (a hint only): ${fileTitle}\nPhysical PDF pages: ${pageCount}\nThe following notes were generated from every semantic passage of the extracted document. Build a coherent whole-document map.\n<passage-notes>\n${JSON.stringify(notes)}\n</passage-notes>`,
+    prompt: `Source filename (a hint only): ${fileTitle}\nPhysical PDF pages: ${pageCount}\nThe following notes were generated from every semantic passage. Build a coherent whole-document map using both the notes and the ORIGINAL SOURCE TEXT. Copy evidence quotations from the source passages below, not from the notes. Keep each quotation to a short contiguous phrase.\n<passage-notes>\n${JSON.stringify(notes)}\n</passage-notes>\n<original-source-passages>\n${sourceChunks.map((chunk, index) => `<passage index="${index + 1}">\n${chunk}\n</passage>`).join("\n")}\n</original-source-passages>`,
   }, metrics);
   if (!validateDocumentMapEvidence(map, sourceChunks)) {
     throw new AiProviderError("AI_OUTPUT_INVALID", undefined, "source_quote_mismatch");

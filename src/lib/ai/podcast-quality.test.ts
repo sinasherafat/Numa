@@ -87,6 +87,13 @@ describe("podcast quality constraints", () => {
     expect(validateDocumentMapEvidence(source, source.keyIdeas.flatMap((idea) => idea.evidence))).toBe(true);
   });
 
+  it("matches source quotations across PDF line-wrap hyphenation and punctuation differences", () => {
+    const source = mapFixture();
+    source.keyIdeas = [source.keyIdeas[0]];
+    source.keyIdeas[0].evidence = ["The research compares evidence."];
+    expect(validateDocumentMapEvidence(source, ["The research com-\npares evidence!"])).toBe(true);
+  });
+
   it("rejects a long dialogue that claims unknown grounding IDs", () => {
     const script = scriptFixture();
     script.turns[0].ideaIds = ["I9"];

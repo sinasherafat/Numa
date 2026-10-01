@@ -87,6 +87,8 @@ describe("multi-stage source-grounded podcast stream", () => {
     expect(generateJson.mock.calls[0][0].prompt).toContain(input.text.slice(0, 100));
     expect(generateJson.mock.calls[1][0].prompt).toContain("passage-notes");
     expect(generateJson.mock.calls[2][0].prompt).toContain("document-map");
+    expect(generateJson.mock.calls[1][0].prompt).toContain("ORIGINAL SOURCE TEXT");
+    expect(generateJson.mock.calls[1][0].prompt).toContain(input.text.slice(-100));
     expect(generateJson.mock.calls[3][0].prompt).toContain("outline");
     expect(synthesizeTurn).toHaveBeenCalledTimes(8);
     expect(synthesizeTurn.mock.calls[0]).toEqual([scriptFixture().turns[0].text, "angus"]);
