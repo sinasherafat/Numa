@@ -75,6 +75,20 @@ describe("Cloudflare Workers AI provider adapter", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("uses the documented audio/mpeg type for MeloTTS JSON-wrapped base64 MP3 output", async () => {
+    const mp3 = tinyMp3();
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      result: { audio: Buffer.from(mp3).toString("base64") },
+    }), { headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const audio = await new CloudflareWorkersAiProvider().synthesize("Host A: A short spoken test.");
+
+    expect(audio.bytes).toEqual(mp3);
+    expect(audio.mediaType).toBe("audio/mpeg");
+  });
+
   it("fails closed when credentials are absent", async () => {
     delete process.env.CLOUDFLARE_API_TOKEN;
     const fetchMock = vi.fn();

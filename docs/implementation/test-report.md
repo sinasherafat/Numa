@@ -4,17 +4,19 @@ This report is updated from executed commands; unavailable checks are never reco
 
 ## Direct PDF → podcast MVP (2026-10-01)
 
-Added a Preview-only, same-origin route which bypasses the existing Workflow, receives only the browser-extracted text after explicit consent, invokes the server-only Cloudflare LLM and MeloTTS adapter, then returns generated audio directly to an HTML audio player. There is no fixture fallback. The PDF remains local; the generated MP3 is an object URL in browser memory and is not persisted to Blob or Supabase. Request, PDF, script and audio caps are enforced. The two-attempt throttle is best-effort per server instance (not a global quota). The attached reference PDFs are no longer present under `/tmp/codex-remote-attachments`, and no PDF is stored under `docs/product/` or `docs/design/references/`; hosted acceptance with a user-selected real PDF is still pending.
+Added a Preview-only, same-origin route which bypasses the existing Workflow, receives only the browser-extracted text after explicit consent, invokes the server-only Cloudflare LLM and MeloTTS adapter, then returns generated audio directly to an HTML audio player. There is no fixture fallback. The PDF remains local; the generated MP3 is an object URL in browser memory and is not persisted to Blob or Supabase. Request, PDF, script and audio caps are enforced. The two-attempt throttle is best-effort per server instance (not a global quota).
+
+First hosted attempt (2026-10-01): `/new` started empty. The original 2-page `Audio-Learning-Product-Decisions-v0.1.pdf` (68.6 KiB, 3,599 extracted characters) was selected and parsed in-browser. After the notice named that file and Cloudflare Workers AI, consent was checked and Generate Podcast submitted. The Preview returned `AI_OUTPUT_INVALID`; no ready event, audio player, or playback was produced. No success is claimed. Review against Cloudflare's official MeloTTS model schema found that its JSON response wraps MP3 bytes as `result.audio` base64 while the adapter was validating the envelope's `application/json` content type as though it described the audio. The adapter now assigns `audio/mpeg` after decoding that documented envelope and reports safe stage-specific failures without logging source text. Fresh hosted verification is pending the next Preview deployment.
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| TypeScript | Passed | `./node_modules/.bin/tsc --noEmit` after build output finished generating |
+| TypeScript | Passed | `./node_modules/.bin/tsc --noEmit` after the TTS response correction |
 | ESLint | Passed | `./node_modules/.bin/eslint .` (no warnings/errors) |
-| Vitest | Passed | 8 files / 38 tests; includes empty upload state, parser, metadata/removal, direct provider service order/error, stream-to-player contract, no success on provider failure; provider tests are mocks |
+| Vitest | Passed | 8 files / 40 tests; includes Cloudflare's JSON-wrapped MeloTTS envelope contract. Provider tests are mocks, not live proof. |
 | Production build | Passed with existing warning | `./node_modules/.bin/next build --webpack`; direct `/api/podcast/generate` route emitted. Existing `@vercel/queue` expression dependency warning remains. |
 | `git diff --check` | Passed | Worktree diff before commit |
-| Hosted Preview / real Cloudflare provider | Pending | This worktree has not yet been pushed/deployed. No real provider call or hosted playback is claimed. |
-| Preview deployment SHA | Pending | Awaiting the existing PR branch push and Vercel build. |
+| Hosted Preview / real Cloudflare provider | First attempt failed closed | The real PDF parsed and its extracted text was consented/sent. The provider flow returned `AI_OUTPUT_INVALID`; no audio or playback was produced. The corrected adapter is not yet deployed. |
+| Preview deployment SHA | `f958f90` before fix | The next check must match the new branch head after push and Vercel build. |
 
 The `pnpm` wrapper first tried to synchronize its modules directory while the npm registry was unreachable and aborted without purging it; checks were run with the already-installed local binaries. One initial parallel TypeScript check overlapped Next's `.next/types` generation and reported missing generated types; it was rerun after the build and passed.
 

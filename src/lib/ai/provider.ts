@@ -135,7 +135,9 @@ export class CloudflareWorkersAiProvider implements AiProvider {
       throw new AiProviderError("AI_OUTPUT_INVALID");
     }
     const { response, envelope } = await requestModel<unknown>("@cf/myshell-ai/melotts", { prompt: normalized, lang: "en" }, 90_000);
-    const mediaType = response.headers.get("content-type")?.split(";")[0] || "audio/mpeg";
+    // MeloTTS REST returns { result: { audio: <base64 MP3> } } as JSON.
+    // The HTTP content type describes that JSON envelope, not the decoded audio.
+    const mediaType = envelope ? "audio/mpeg" : (response.headers.get("content-type")?.split(";")[0] || "audio/mpeg");
     let bytes: Uint8Array;
     if (envelope) {
       const result = envelope.result as { audio?: string } | null;

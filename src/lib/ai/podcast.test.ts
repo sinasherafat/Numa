@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AiProvider } from "./provider";
+import { AiProviderError, type AiProvider } from "./provider";
 import { streamPodcast, type PodcastInput } from "./podcast";
 
 const input: PodcastInput = {
@@ -42,5 +42,18 @@ describe("direct PDF-to-podcast stream", () => {
     expect(body).toContain("event: error");
     expect(body).not.toContain("event: ready");
     expect(body).toContain("no sample audio was substituted");
+    expect(body).toContain('"stage":"generating_audio"');
+  });
+
+  it("identifies a malformed real-provider script without echoing source content", async () => {
+    const generateJson = vi.fn().mockRejectedValue(new AiProviderError("AI_OUTPUT_INVALID"));
+    const synthesize = vi.fn();
+    const response = streamPodcast(input, { id: "cloudflare-workers-ai", generateJson, synthesize } as unknown as AiProvider);
+    const body = await response.text();
+    expect(body).toContain('"stage":"creating_script"');
+    expect(body).toContain("script that did not meet the required format");
+    expect(body).not.toContain(input.text);
+    expect(synthesize).not.toHaveBeenCalled();
+    expect(body).not.toContain('event: ready');
   });
 });

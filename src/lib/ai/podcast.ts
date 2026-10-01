@@ -22,12 +22,16 @@ export type PodcastInput = z.infer<typeof podcastInputSchema>;
 export type PodcastScript = z.infer<typeof podcastScriptSchema>;
 export type PodcastStage = "preparing_document" | "creating_script" | "generating_audio";
 
-export function podcastErrorMessage(error: unknown) {
+export function podcastErrorMessage(error: unknown, stage?: PodcastStage) {
   if (error instanceof AiProviderError) {
     if (error.code === "AI_PROVIDER_NOT_CONFIGURED") return "Cloudflare Workers AI is not configured for this Preview. No podcast was created.";
     if (error.code === "AI_DAILY_LIMIT_REACHED") return "Cloudflare's free daily AI allocation is exhausted. Try again after it resets. No podcast was created.";
     if (error.code === "AI_RATE_LIMIT") return "Cloudflare is temporarily rate-limiting requests. Try again later. No podcast was created.";
-    if (error.code === "AI_OUTPUT_INVALID") return "Cloudflare returned an invalid script or audio file. No podcast was created.";
+    if (error.code === "AI_OUTPUT_INVALID") {
+      if (stage === "creating_script") return "Cloudflare returned a script that did not meet the required format. No podcast was created.";
+      if (stage === "generating_audio") return "Cloudflare MeloTTS returned audio that did not meet the MP3 playback requirements. No podcast was created.";
+      return "Cloudflare returned an invalid script or audio file. No podcast was created.";
+    }
   }
   if (error instanceof Error && error.message === "PODCAST_AUDIO_TOO_LARGE") {
     return "The generated audio exceeded this Preview's 3 MiB direct-playback limit. No podcast was created.";
@@ -43,8 +47,10 @@ export function streamPodcast(input: PodcastInput, provider: AiProvider = getAiP
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       void (async () => {
+        let stage: PodcastStage = "preparing_document";
         try {
           sse(controller, "stage", { stage: "preparing_document" });
+          stage = "creating_script";
           sse(controller, "stage", { stage: "creating_script" });
           const sourceName = input.fileName.replace(/\.pdf$/i, "");
           const generated = await provider.generateJson({
@@ -56,6 +62,7 @@ export function streamPodcast(input: PodcastInput, provider: AiProvider = getAiP
           const wordCount = generated.script.split(/\s+/).filter(Boolean).length;
           if (wordCount > 550) throw new AiProviderError("AI_OUTPUT_INVALID");
           sse(controller, "script", generated);
+          stage = "generating_audio";
           sse(controller, "stage", { stage: "generating_audio" });
           const speech = await provider.synthesize(generated.script);
           if (speech.bytes.byteLength > PODCAST_DIRECT_AUDIO_BYTES) throw new Error("PODCAST_AUDIO_TOO_LARGE");
@@ -68,7 +75,9 @@ export function streamPodcast(input: PodcastInput, provider: AiProvider = getAiP
           });
           controller.close();
         } catch (error) {
-          sse(controller, "error", { message: podcastErrorMessage(error) });
+          // Report only the stage and safe category. Never log or echo source text/provider bodies.
+          console.error("Numa direct podcast provider failure", { stage, code: error instanceof AiProviderError ? error.code : "PROVIDER_FAILED" });
+          sse(controller, "error", { stage, message: podcastErrorMessage(error, stage) });
           controller.close();
         }
       })();
