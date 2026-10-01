@@ -28,7 +28,7 @@ export class AiProviderError extends Error {
   constructor(
     readonly code: "AI_PROVIDER_NOT_CONFIGURED" | "AI_RATE_LIMIT" | "AI_DAILY_LIMIT_REACHED" | "AI_PROVIDER_FAILED" | "AI_OUTPUT_INVALID",
     readonly status?: number,
-    readonly diagnostic?: "empty_model_output" | "malformed_model_json" | "model_schema_mismatch" | "script_word_limit" | "script_quality_rejected" | "source_chunk_limit",
+    readonly diagnostic?: "empty_model_output" | "malformed_model_json" | "model_schema_mismatch" | "source_quote_mismatch" | "script_word_limit" | "script_quality_rejected" | "source_chunk_limit",
   ) {
     super(code);
     this.name = "AiProviderError";

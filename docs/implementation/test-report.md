@@ -2,6 +2,10 @@
 
 This report is updated from executed commands; unavailable checks are never recorded as passes.
 
+## Latest 12-page hosted quality attempt (2026-10-01)
+
+On Preview commit `7150d5c6682d1d077ef928aee6f89ea027297999`, the real 241.3 KB Pangaan PDF was parsed in-browser as 12 pages / 13,465 extracted characters. After explicit consent, the request entered Cloudflare's document-understanding stage and failed closed with a structure/grounding error. No outline, script, Aura call, audio player, or playback resulted. The deployed SSE failure event omitted its safe internal diagnostic; Vercel runtime log access returned 403. The current worktree adds sanitized stage/code/diagnostic and non-content metrics to the error event and browser console. A retry against that diagnostic build is required before the failure can be attributed or fixed. The source was real; this was not a fixture result.
+
 ## Direct PDF → podcast MVP (2026-10-01)
 
 Added a Preview-only, same-origin route which bypasses the existing Workflow, receives only the browser-extracted text after explicit consent, invokes the server-only Cloudflare LLM and MeloTTS adapter, then returns generated audio directly to an HTML audio player. There is no fixture fallback. The PDF remains local; the generated MP3 is an object URL in browser memory and is not persisted to Blob or Supabase. Request, PDF, script and audio caps are enforced. The two-attempt throttle is best-effort per server instance (not a global quota).
@@ -102,7 +106,7 @@ The current worktree replaces that path with semantic source chunks → chunk no
 
 For an 8–15 page source, direct Preview speech is bounded to 5,000 characters (about 6,819 Aura-1 Neurons at Cloudflare's published rate), with a 16-segment / 8 MiB / seven-minute cap. There are at most five 4,500-character chunks, 800 spoken words, 20,000 extracted source characters, and one script-only retry. Cloudflare Workers Free has an account-wide 10,000-Neuron daily ceiling; if other account activity consumes the remainder, requests fail closed. No paid plan, card, AI Gateway, fallback, or fixture path is used.
 
-The new local checks were TypeScript, ESLint, Vitest 53/53, production build, and `git diff --check`; build retains the existing non-fatal `@vercel/queue` critical-dependency warning. These tests are deterministic contracts, not live inference proof. A matching 12-page Pangaan PDF candidate is present locally and extracts to 13,443 characters; its new Preview request, model/token metrics, human listening, and deployment SHA remain pending. No success claim is made for this quality rework until the hosted recording is reviewed.
+The local checks are TypeScript, ESLint, Vitest 54/54, production build, and `git diff --check`; build retains the existing non-fatal `@vercel/queue` critical-dependency warning. A real 12-page Pangaan PDF (241.3 KB) was selected and extracted in the Preview browser to 13,465 characters. After explicit consent, generation entered Cloudflare's document-understanding stage, then failed closed with the UI message that returned content did not meet structure/grounding checks. No outline, script, TTS, audio player, or playback resulted. The old implementation did not expose the internal diagnostic in the SSE response, and Vercel runtime logs returned 403 for this project connection. The current change adds only sanitized stage/code/diagnostic and character/token metrics to the failure event and browser console; it never emits source/provider text. A retry against this diagnostic build is still required to identify and fix the exact validation failure. No live quality success claim is made.
 
 ## Deployment safety
 

@@ -86,7 +86,7 @@ async function createDocumentMap(provider: AiProvider, fileTitle: string, pageCo
     prompt: `Source filename (a hint only): ${fileTitle}\nPhysical PDF pages: ${pageCount}\nThe following notes were generated from every semantic passage of the extracted document. Build a coherent whole-document map.\n<passage-notes>\n${JSON.stringify(notes)}\n</passage-notes>`,
   }, metrics);
   if (!validateDocumentMapEvidence(map, sourceChunks)) {
-    throw new AiProviderError("AI_OUTPUT_INVALID", undefined, "model_schema_mismatch");
+    throw new AiProviderError("AI_OUTPUT_INVALID", undefined, "source_quote_mismatch");
   }
   return map;
 }
@@ -238,7 +238,16 @@ export function streamPodcast(input: PodcastInput, provider: AiProvider = getAiP
             code: safeCode,
             ...diagnostics(),
           });
-          sse(controller, "error", { stage, message: podcastErrorMessage(error, stage) });
+          sse(controller, "error", {
+            stage,
+            message: podcastErrorMessage(error, stage),
+            code: error instanceof AiProviderError ? error.code : safeCode,
+            ...(error instanceof AiProviderError && error.diagnostic ? { diagnostic: error.diagnostic } : {}),
+            sourcePages: input.pageCount,
+            sourceCharacters,
+            sourceChunks: chunks.length,
+            modelRequests: metrics,
+          });
           controller.close();
         }
       })();

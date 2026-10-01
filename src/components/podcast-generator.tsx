@@ -128,6 +128,15 @@ export function PodcastGenerator({ document }: { document: UploadDocument }) {
           if (event === "stage" && typeof payload.stage === "string" && payload.stage in stageLabels) {
             setStage(payload.stage as PodcastStage);
           } else if (event === "error") {
+            console.info("Numa podcast generation diagnostic", {
+              stage: payload.stage,
+              code: payload.code,
+              diagnostic: payload.diagnostic,
+              sourcePages: payload.sourcePages,
+              sourceCharacters: payload.sourceCharacters,
+              sourceChunks: payload.sourceChunks,
+              modelRequests: payload.modelRequests,
+            });
             throw new Error(typeof payload.message === "string" ? payload.message : "Live podcast generation failed. No sample audio was substituted.");
           } else if (event === "ready") {
             if (typeof payload.title !== "string" || typeof payload.script !== "string" || !Array.isArray(payload.audioSegments) || payload.audioSegments.length === 0 || !Number.isFinite(payload.durationMs)) {

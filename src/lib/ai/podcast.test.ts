@@ -134,8 +134,25 @@ describe("multi-stage source-grounded podcast stream", () => {
     const synthesize = vi.fn();
     const body = await (await streamPodcast(input, { id: "cloudflare-workers-ai", generateJson, synthesize } as unknown as AiProvider)).text();
     expect(body).toContain('"stage":"understanding_document"');
+    expect(body).toContain('"code":"AI_OUTPUT_INVALID"');
+    expect(body).toContain('"diagnostic":"model_schema_mismatch"');
+    expect(body).toContain('"sourcePages":12');
+    expect(body).toContain('"modelRequests":[]');
     expect(body).not.toContain(input.text);
     expect(synthesize).not.toHaveBeenCalled();
+    expect(body).not.toContain('event: ready');
+  });
+
+  it("separates a non-verbatim source quote from a provider schema failure", async () => {
+    const invalidMap = { ...map, keyIdeas: map.keyIdeas.map((idea, index) => index === 0 ? { ...idea, evidence: ["A quotation that does not occur in this document."] } : idea) };
+    const generated = [chunkNotes, invalidMap];
+    const generateJson = vi.fn().mockImplementation(async () => generated.shift());
+    const synthesizeTurn = vi.fn();
+    const body = await (await streamPodcast(input, { id: "cloudflare-workers-ai", generateJson, synthesizeTurn } as unknown as AiProvider)).text();
+    expect(body).toContain('"diagnostic":"source_quote_mismatch"');
+    expect(body).toContain('"modelRequests":[{"step":"document_map_chunk_1"');
+    expect(body).not.toContain(input.text);
+    expect(synthesizeTurn).not.toHaveBeenCalled();
     expect(body).not.toContain('event: ready');
   });
 });
