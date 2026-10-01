@@ -13,9 +13,9 @@ This report is updated from executed commands; unavailable checks are never reco
 | Vitest | Passed | 6 files / 34 tests, including a generated one-page PDF parsed by PDF.js, upload metadata/text/error/removal UI, and existing suites |
 | Production build | Passed with existing warning | `./node_modules/.bin/next build --webpack`; all Workflow steps built. The existing Vercel Queue expression dependency warning remains. |
 | `git diff --check` | Passed | Current implementation diff |
-| Hosted Preview file selection | Pending | Must be checked against the new deployment after push; no hosted upload has been claimed yet. |
+| Hosted Preview file selection | Partially verified | The current branch Preview `/new` loaded in an isolated browser and first showed an empty state. The native chooser supplied a different recent local PDF than the generated temporary test file; the browser-side parser returned real page count and extracted-text metadata. The selected document stayed in browser memory and was cleared by reloading. No hosted PDF→AI/Workflow result is claimed. |
 
-`docs/implementation/local-upload.md` records the temporary boundary. The change does not fix or bypass the separate Supabase Workflow credential mismatch and makes no AI/STT/TTS success claims.
+`docs/implementation/local-upload.md` records the temporary boundary. The native file chooser did not select the generated `/private/tmp` test PDF on this pass, so the exact generated artifact was not verified in the hosted browser. The document selected by the chooser was parsed only in the browser; its extracted contents were not inspected, and reloading cleared the session state. The change does not fix or bypass the separate Supabase Workflow credential mismatch and makes no AI/STT/TTS success claims.
 
 ## Automated checks
 
