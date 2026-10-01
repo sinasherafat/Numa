@@ -33,7 +33,7 @@ describe("Cloudflare Workers AI provider adapter", () => {
 
     await expect(new CloudflareWorkersAiProvider().generateJson({ system: "Be exact", prompt: "Small source", schema: responseSchema })).resolves.toEqual({ answer: "grounded" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(String(fetchMock.mock.calls[0][0])).toContain("/@cf/openai/gpt-oss-20b");
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/@cf/meta/llama-3.1-8b-instruct");
     const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(body.response_format).toEqual({ type: "json_object" });
     expect(body.max_tokens).toBeLessThanOrEqual(4096);
