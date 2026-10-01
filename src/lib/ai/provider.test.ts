@@ -39,6 +39,18 @@ describe("Cloudflare Workers AI provider adapter", () => {
     expect(body.max_tokens).toBeLessThanOrEqual(4096);
   });
 
+  it("validates structured JSON objects returned directly by Workers AI JSON mode", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      result: { response: { answer: "grounded" } },
+    }), { headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(new CloudflareWorkersAiProvider().generateJson({ system: "Be exact", prompt: "Small source", schema: responseSchema }))
+      .resolves.toEqual({ answer: "grounded" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects malformed or schema-invalid generation without retrying", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, result: { response: '{"wrong":true}' } }), { headers: { "content-type": "application/json" } }));
     vi.stubGlobal("fetch", fetchMock);

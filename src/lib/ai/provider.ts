@@ -22,7 +22,7 @@ export class AiProviderError extends Error {
 }
 
 type CloudflareEnvelope<T> = { success?: boolean; result?: T; errors?: Array<{ code?: number; message?: string }> };
-type TextResult = { response?: string; choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }> };
+type TextResult = { response?: unknown; choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }> };
 type TranscriptionResult = { text?: string; transcription?: string; language?: string };
 
 function cloudflareCredentials() {
@@ -109,10 +109,15 @@ export class CloudflareWorkersAiProvider implements AiProvider {
       temperature: 0.2,
     });
     const result = envelope?.result;
-    const text = result?.response ?? contentText(result?.choices?.[0]?.message?.content);
-    if (!text) throw new AiProviderError("AI_OUTPUT_INVALID");
+    const response = result?.response;
+    const text = typeof response === "string" ? response : contentText(result?.choices?.[0]?.message?.content);
     let parsed: unknown;
-    try { parsed = JSON.parse(text); } catch { throw new AiProviderError("AI_OUTPUT_INVALID"); }
+    if (response !== undefined && response !== null && typeof response === "object") {
+      parsed = response;
+    } else {
+      if (!text) throw new AiProviderError("AI_OUTPUT_INVALID");
+      try { parsed = JSON.parse(text); } catch { throw new AiProviderError("AI_OUTPUT_INVALID"); }
+    }
     const validated = schema.safeParse(parsed);
     if (!validated.success) throw new AiProviderError("AI_OUTPUT_INVALID");
     return validated.data;
