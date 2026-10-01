@@ -2,6 +2,21 @@
 
 This report is updated from executed commands; unavailable checks are never recorded as passes.
 
+## Local-first real PDF upload update (2026-10-01)
+
+`/new` no longer preloads the illustrative `Learning intervals.pdf`. It starts empty and uses the replaceable `UploadAdapter` interface with `LocalUploadAdapter`; the browser reads and parses the selected PDF using the repository's existing `unpdf`/PDF.js dependency. The actual filename, byte size, page count and extracted text remain in root React state during in-app navigation. The file and its text are not sent to a server or storage provider. Plan/audio/AI stages beyond local parsing remain explicitly illustrative.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| TypeScript strict typecheck | Passed | `./node_modules/.bin/tsc --noEmit` after the local upload implementation |
+| ESLint | Passed | `./node_modules/.bin/eslint .` after the local upload implementation |
+| Vitest | Passed | 6 files / 34 tests, including a generated one-page PDF parsed by PDF.js, upload metadata/text/error/removal UI, and existing suites |
+| Production build | Passed with existing warning | `./node_modules/.bin/next build --webpack`; all Workflow steps built. The existing Vercel Queue expression dependency warning remains. |
+| `git diff --check` | Passed | Current implementation diff |
+| Hosted Preview file selection | Pending | Must be checked against the new deployment after push; no hosted upload has been claimed yet. |
+
+`docs/implementation/local-upload.md` records the temporary boundary. The change does not fix or bypass the separate Supabase Workflow credential mismatch and makes no AI/STT/TTS success claims.
+
 ## Automated checks
 
 ### Current state after Cloudflare Preview configuration (2026-10-01)

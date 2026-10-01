@@ -40,12 +40,13 @@ import {
   Square,
   Tag,
   Trash2,
-  Upload,
   Volume2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { chapters, demoSources, demoTranscript, goalCopy, navItems, routeTitles, type Goal } from "@/lib/demo-data";
+import { LocalPdfUpload } from "@/components/local-pdf-upload";
+import { formatFileSize, type UploadDocument } from "@/lib/uploads/local";
 
 type AppState = {
   goal: Goal;
@@ -108,8 +109,9 @@ function useDemoState() {
 export function NumaApp({ initialPath }: { initialPath: string }) {
   const pathname = usePathname() || initialPath;
   const [state, setState] = useDemoState();
+  const [localDocument, setLocalDocument] = useState<UploadDocument | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const page = getScreen(pathname, state, setState);
+  const page = getScreen(pathname, state, setState, localDocument, setLocalDocument);
   const activeGroup = routeGroup(pathname);
 
   return (
@@ -120,7 +122,7 @@ export function NumaApp({ initialPath }: { initialPath: string }) {
           <span className="brand-name">Numa</span>
         </Link>
         <div className="workspace-label">Personal workspace</div>
-        <Link href="/new" className="new-session"><Plus size={18}/><span>New session</span></Link>
+        <Link href="/new" className="new-session" onClick={() => setLocalDocument(null)}><Plus size={18}/><span>New session</span></Link>
         <nav className="nav">
           {navItems.map((item) => {
             const Icon = iconByKey[item.key];
@@ -141,7 +143,7 @@ export function NumaApp({ initialPath }: { initialPath: string }) {
             <strong>{routeTitles[pathname] ?? "Numa"}</strong>
           </div>
           <div className="top-actions">
-            <span className="workspace-pill"><Sparkles size={15}/> Sample workspace <ChevronDown size={14}/></span>
+            <span className="workspace-pill"><Sparkles size={15}/> {localDocument ? "Local test mode" : "Sample workspace"} <ChevronDown size={14}/></span>
             <button className="icon-btn" aria-label="Search"><Search size={20}/></button>
           </div>
         </header>
@@ -150,7 +152,7 @@ export function NumaApp({ initialPath }: { initialPath: string }) {
       <nav className="mobile-nav" aria-label="Mobile navigation">
         <Link href="/" className={activeGroup === "home" ? "active" : ""}><Home size={19}/><span>Home</span></Link>
         <Link href="/library" className={activeGroup === "library" ? "active" : ""}><BookOpen size={19}/><span>Library</span></Link>
-        <Link href="/new" aria-label="New session"><span className="mobile-new"><Plus size={22}/></span><span>New</span></Link>
+        <Link href="/new" aria-label="New session" onClick={() => setLocalDocument(null)}><span className="mobile-new"><Plus size={22}/></span><span>New</span></Link>
         <Link href="/topics/spaced-practice/changes" className={activeGroup === "topics" ? "active" : ""}><Tag size={19}/><span>Topics</span></Link>
         <Link href="/understanding" className={activeGroup === "understanding" ? "active" : ""}><BarChart3 size={19}/><span>Understanding</span></Link>
       </nav>
@@ -158,10 +160,10 @@ export function NumaApp({ initialPath }: { initialPath: string }) {
   );
 }
 
-function getScreen(path: string, state: AppState, setState: React.Dispatch<React.SetStateAction<AppState>>) {
-  if (path === "/new" || path === "/sources") return <NewSession state={state} setState={setState}/>;
-  if (path === "/plan") return <Plan state={state}/>;
-  if (path === "/listen" || path === "/listen/ask") return <Player state={state} setState={setState} initialAsk={path.endsWith("ask")}/>;
+function getScreen(path: string, state: AppState, setState: React.Dispatch<React.SetStateAction<AppState>>, localDocument: UploadDocument | null, setLocalDocument: (document: UploadDocument | null) => void) {
+  if (path === "/new" || path === "/sources") return <NewSession state={state} setState={setState} localDocument={localDocument} setLocalDocument={setLocalDocument}/>;
+  if (path === "/plan") return <Plan state={state} localDocument={localDocument}/>;
+  if (path === "/listen" || path === "/listen/ask") return <Player state={state} setState={setState} initialAsk={path.endsWith("ask")} localDocument={localDocument}/>;
   if (path === "/sources/study-a/page/4") return <SourceReader/>;
   if (path === "/explain") return <Explain state={state} setState={setState}/>;
   if (path === "/explain/feedback") return <Feedback state={state} setState={setState}/>;
@@ -171,7 +173,7 @@ function getScreen(path: string, state: AppState, setState: React.Dispatch<React
   if (path === "/outcome") return <Outcome state={state}/>;
   if (path === "/library") return <LibraryPage/>;
   if (path === "/settings") return <SettingsPage state={state} setState={setState}/>;
-  return <HomePage/>;
+  return <HomePage onStartSession={() => setLocalDocument(null)}/>;
 }
 
 function PageHeading({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
@@ -182,9 +184,9 @@ function DemoLabel() {
   return <span className="badge purple"><Sparkles size={12}/> Illustrative demo data</span>;
 }
 
-function HomePage() {
+function HomePage({ onStartSession }: { onStartSession: () => void }) {
   return <div className="page narrow home-page">
-    <PageHeading title="Good morning, Sina." subtitle="Pick up where you left off, or begin with a source." action={<Link href="/new" className="button primary"><Plus size={18}/> Start a session</Link>}/>
+    <PageHeading title="Good morning, Sina." subtitle="Pick up where you left off, or begin with a source." action={<Link href="/new" onClick={onStartSession} className="button primary"><Plus size={18}/> Start a session</Link>}/>
     <DemoLabel/>
     <div className="grid two home-grid">
       <section className="card continue-card">
@@ -213,20 +215,18 @@ function GoalIcon({ goal }: { goal: Goal }) {
   return <BookOpen size={27}/>;
 }
 
-function NewSession({ state, setState }: { state: AppState; setState: React.Dispatch<React.SetStateAction<AppState>> }) {
+function NewSession({ state, setState, localDocument, setLocalDocument }: { state: AppState; setState: React.Dispatch<React.SetStateAction<AppState>>; localDocument: UploadDocument | null; setLocalDocument: (document: UploadDocument | null) => void }) {
   const router = useRouter();
-  const [fileReady, setFileReady] = useState(true);
   return <div className="page new-page">
     <PageHeading title="What would you like to understand?" subtitle="Start with a source. Leave with something you can explain."/>
-    <DemoLabel/>
+    <span className="badge purple"><Sparkles size={12}/> Local test mode · starts empty</span>
     <div className="goal-grid">
       {(Object.keys(goalCopy) as Goal[]).map((goal) => <button key={goal} className={`goal-card ${state.goal === goal ? "active" : ""}`} onClick={() => setState(s => ({ ...s, goal }))}><GoalIcon goal={goal}/><div><strong>{goalCopy[goal].label}</strong><span>{goalCopy[goal].description}</span></div></button>)}
     </div>
     <div className="grid two session-grid">
       <section className="card">
         <h2>Your sources</h2>
-        <label className="upload-zone"><input type="file" accept="application/pdf" onChange={() => setFileReady(true)}/><Upload size={26}/><strong>Drop a PDF or choose a file</strong><span>Text-based PDF · live processing limit 4 MiB</span><em>Demo uploads stay in your browser and are not processed.</em></label>
-        {fileReady && <div className="source-file"><FileText size={24}/><div><strong>Learning intervals.pdf</strong><span>12 pages · Demo source</span></div><span className="ready"><CheckCircle2 size={15}/> Ready</span><MoreHorizontal size={18}/></div>}
+        <LocalPdfUpload document={localDocument} onDocumentChange={setLocalDocument}/>
         <div className="divider"/>
         <h2>Make it yours</h2>
         <div className="field"><label htmlFor="question">What is your {state.goal === "presentation" ? "presentation" : "learning session"} about?</label><input id="question" className="input" defaultValue="Explain how spaced practice affects recall"/></div>
@@ -235,7 +235,8 @@ function NewSession({ state, setState }: { state: AppState; setState: React.Disp
           <div className="field"><label htmlFor="level">Your familiarity</label><select id="level" className="select" value={state.level} onChange={e => setState(s => ({...s, level: e.target.value as AppState["level"]}))}><option value="beginner">Beginner</option><option value="familiar">Familiar</option><option value="advanced">Advanced</option></select></div>
         </div>
         <div className="field"><label>Duration</label><div className="segmented">{([5,10,20] as const).map(d => <button key={d} className={`segment ${state.duration === d ? "active" : ""}`} onClick={() => setState(s => ({...s,duration:d}))}>{d} min</button>)}</div></div>
-        <div className="row form-actions"><button className="button primary" onClick={() => router.push("/plan")}>Review plan <ArrowRight size={17}/></button><button className="button" onClick={() => router.push("/library")}>Save draft</button></div>
+        <p className="local-flow-note">Choose a real PDF to continue. Plan, audio, transcript, and AI stages beyond local parsing remain explicitly labeled illustrative previews. Local drafts are session-only and are not saved remotely.</p>
+        <div className="row form-actions"><button className="button primary" disabled={!localDocument} onClick={() => router.push("/plan")}>Review plan <ArrowRight size={17}/></button><button className="button" onClick={() => router.push("/library")}>View sample library</button></div>
       </section>
       <div className="section-stack">
         <section className="card plan-preview">
@@ -250,20 +251,27 @@ function NewSession({ state, setState }: { state: AppState; setState: React.Disp
   </div>;
 }
 
-function Plan({ state }: { state: AppState }) {
+function Plan({ state, localDocument }: { state: AppState; localDocument: UploadDocument | null }) {
   return <div className="page narrow">
-    <PageHeading title="Your learning path is ready to review." subtitle="Everything below is editable before Numa creates audio."/>
-    <DemoLabel/>
+    <PageHeading title="Your learning path is ready to review." subtitle={localDocument ? "Your real PDF text is available in this browser session. These learning stages are still an illustrative preview." : "Sample learning path · no local PDF selected."}/>
+    {localDocument ? <span className="badge purple"><Sparkles size={12}/> Illustrative plan preview</span> : <DemoLabel/>}
     <div className="grid two">
-      <section className="card"><div className="row between"><div><span className="eyebrow">Goal</span><h2>{goalCopy[state.goal].label}</h2></div><Link href="/new" className="button compact"><Pencil size={14}/> Edit</Link></div><p className="muted">Explain how spaced practice affects recall for a graduate seminar.</p><div className="source-file"><FileText size={23}/><div><strong>Learning intervals.pdf</strong><span>Pages 1–12 selected</span></div><CheckCircle2 size={17} className="success"/></div><div className="source-file"><FileText size={23}/><div><strong>Recall over time.pdf</strong><span>Pages 1–9 selected</span></div><CheckCircle2 size={17} className="success"/></div></section>
-      <section className="card"><h2>Plan details</h2><div className="detail-row"><span>Familiarity</span><strong>{state.level}</strong></div><div className="detail-row"><span>Target duration</span><strong>{state.duration} min</strong></div><div className="detail-row"><span>Language</span><strong>English</strong></div><div className="detail-row"><span>Learning memory</span><strong>{state.memory ? "On" : "Off"}</strong></div><div className="notice"><strong>Sample workspace</strong><br/>Audio, citations and feedback use a consistent illustrative fixture. Private document processing is shown separately when providers are configured.</div></section>
+      <section className="card"><div className="row between"><div><span className="eyebrow">Goal</span><h2>{goalCopy[state.goal].label}</h2></div><Link href="/new" className="button compact"><Pencil size={14}/> Edit</Link></div><p className="muted">{localDocument ? "Real source metadata and extracted text from your local PDF:" : "Sample preview about spaced practice and recall."}</p>{localDocument ? <LocalSourceSummary document={localDocument}/> : <><div className="source-file"><FileText size={23}/><div><strong>Learning intervals.pdf</strong><span>12 pages · Illustrative demo source</span></div><CheckCircle2 size={17} className="success"/></div><div className="source-file"><FileText size={23}/><div><strong>Recall over time.pdf</strong><span>9 pages · Illustrative demo source</span></div><CheckCircle2 size={17} className="success"/></div></>}</section>
+      <section className="card"><h2>Plan details</h2><div className="detail-row"><span>Familiarity</span><strong>{state.level}</strong></div><div className="detail-row"><span>Target duration</span><strong>{state.duration} min</strong></div><div className="detail-row"><span>Language</span><strong>English</strong></div><div className="detail-row"><span>Learning memory</span><strong>{state.memory ? "On" : "Off"}</strong></div><div className="notice"><strong>{localDocument ? "Local test upload" : "Sample workspace"}</strong><br/>{localDocument ? "The PDF was parsed locally. This plan, audio, citations, and feedback are not AI-generated and remain illustrative." : "Audio, citations and feedback are illustrative fixtures. No document is selected."}</div></section>
     </div>
     <section className="card chapter-plan"><h2>Proposed chapters</h2>{chapters.map(c => <div className="chapter-row" key={c.n}><span>{c.n}</span><div><strong>{c.title}</strong><p className="fine">Grounded in selected source pages</p></div><span>{c.duration}</span></div>)}</section>
-    <div className="row"><Link href="/listen" className="button primary"><Sparkles size={17}/> Open sample audio</Link><Link href="/new" className="button">Edit inputs</Link></div>
+    <div className="row"><Link href="/listen" className="button primary"><Sparkles size={17}/> Continue to illustrative audio</Link><Link href="/new" className="button">Edit inputs</Link></div>
   </div>;
 }
 
-function Player({ state, setState, initialAsk }: { state: AppState; setState: React.Dispatch<React.SetStateAction<AppState>>; initialAsk: boolean }) {
+function LocalSourceSummary({ document }: { document: UploadDocument }) {
+  return <div className="local-source-summary">
+    <div className="source-file local-source-file"><FileText size={23}/><div><strong>{document.name}</strong><span>{formatFileSize(document.size)} · {document.pageCount} {document.pageCount === 1 ? "page" : "pages"} · Local test upload</span></div></div>
+    <details className="extracted-text"><summary>Actual extracted text · {document.text.length.toLocaleString()} characters</summary><pre>{document.text.slice(0, 1800)}{document.text.length > 1800 ? "\n\n… Preview truncated." : ""}</pre></details>
+  </div>;
+}
+
+function Player({ state, setState, initialAsk, localDocument }: { state: AppState; setState: React.Dispatch<React.SetStateAction<AppState>>; initialAsk: boolean; localDocument: UploadDocument | null }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(18);
@@ -282,8 +290,8 @@ function Player({ state, setState, initialAsk }: { state: AppState; setState: Re
   const acceptAdaptation = () => { setState(s => ({...s,adapted:true})); setAskOpen(false); };
   return <div className={`player-layout ${askOpen ? "with-panel" : ""}`}>
     <div className="page player-main">
-      <PageHeading title="Spaced practice & recall" subtitle="Prepare a presentation · 2 demo sources · 10 min"/>
-      <DemoLabel/>
+      <PageHeading title={localDocument ? localDocument.name : "Spaced practice & recall"} subtitle={localDocument ? `${localDocument.pageCount} ${localDocument.pageCount === 1 ? "page" : "pages"} · Local test source · following media remains illustrative` : "Prepare a presentation · 2 demo sources · 10 min"}/>
+      {localDocument ? <><span className="badge purple"><FileText size={12}/> Real file · local test mode</span><section className="card local-player-source"><h2>Selected PDF · parsed in this browser</h2><LocalSourceSummary document={localDocument}/></section><span className="badge">Illustrative demo audio, transcript & AI stages</span></> : <DemoLabel/>}
       <div className="tabs"><button className="tab active">Listen</button><Link className="tab" href="/sources/study-a/page/4">Sources</Link><Link className="tab" href="/outcome">Outcome</Link></div>
       <section className="card audio-card">
         <span className="eyebrow">Chapter 2 of 4</span><div className="row between audio-title"><h2>Why the interval matters</h2>{state.adapted && <span className="badge purple"><Sparkles size={12}/> Updated path</span>}</div>

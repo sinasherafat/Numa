@@ -11,7 +11,7 @@ Status vocabulary: **implemented** means code or UI exists; **verified** means a
 | F03 | Voice or text explanation, editable transcript, grounded feedback, Cannot assess, targeted review | Sample `/explain`; live MediaRecorder, private raw-audio policy, Cloudflare Whisper adapter, editable transcript, confirmed-text persistence, grounded assessment route | Deterministic adapter tests and typed persistence; the current hosted route is a fixture | Real STT/assessment are unverified; Preview values are masked and authenticated Numa access is unavailable |
 | F04 | Compare 2–5 sources around one question without manufacturing conflict | Authenticated `/api/live/comparisons` uses Cloudflare JSON generation, owner-scoped ready versions, same-topic validation, bounded extracted evidence, chunk UUID validation, physical-page citations, snapshot/outcome persistence, and a live workspace form. | Helper/schema tests pass; route has not been run against the provider or an authenticated hosted session | Live provider execution and browser verification are blocked at the Workflow credential boundary; sample `/compare` remains illustrative |
 | F05 | Compare new sources with an explicit reviewed baseline; preserve dates and no automatic baseline movement | Authenticated baseline and `/api/live/changes` routes preserve explicit immutable checkpoints, owner/topic-scoped versions, bounded evidence, cited classifications and persisted change sets. | Helper/schema tests pass; route has not been run against the provider or an authenticated hosted session | Live provider execution and browser verification are blocked at the Workflow credential boundary; sample changes screen remains illustrative |
-| F06 | Goal changes path, practice and editable outputs | Sample goal journey; live goal/level/five-minute cap feed source-ingest Workflow; persisted notes, flashcards, outline, audio, outcomes | Adapter contract tests; Workflow compiler and build previously passed | Real generation/TTS/private audio/playback remain unverified; no real PDF job has run, and authenticated Numa access is unavailable |
+| F06 | Goal changes path, practice and editable outputs | `/new` now starts empty and accepts a real PDF through the replaceable `UploadAdapter`; `LocalUploadAdapter` parses actual text/page count in-browser and keeps it in session React state. Later plan/audio stages remain explicit illustrative previews. | Real one-page PDF parser test and upload UI metadata/removal tests; hosted file selection is checked separately | Local parsing is available; remote persistence, Workflow, AI generation, TTS, private audio/playback remain unverified and are not claimed live |
 
 ## Preserved base capabilities
 
@@ -36,8 +36,8 @@ Status vocabulary: **implemented** means code or UI exists; **verified** means a
 | ID | Implementation |
 | --- | --- |
 | S01 Home | `/` with continue, review and recent learning states |
-| S02 New session | `/new` goal, question, level and duration controls |
-| S03 Sources | `/sources` shares staged source UI with upload, ready and truthful demo note |
+| S02 New session | `/new` starts empty, supports real PDF file selection/drop, local parsing, metadata, text preview, errors, and remove |
+| S03 Sources | `/sources` shares the local upload adapter UI; there is no preloaded demo file |
 | S04 Plan | `/plan` with sources, chapters, goal, memory and create-audio review |
 | S05 Player | `/listen` with audio, transcript, controls, actions and future chapters |
 | S06 Ask Explain | `/listen/ask` and responsive side panel |
